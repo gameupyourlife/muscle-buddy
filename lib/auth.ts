@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { expo } from "@better-auth/expo";
 import { db } from "./db";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import * as schema from './db/schema';
 
 export const auth = betterAuth({
     plugins: [expo()],
@@ -9,7 +10,8 @@ export const auth = betterAuth({
         enabled: true, // Enable authentication using email and password.
     },
     database: drizzleAdapter(db, {
-        provider: "pg", // or "pg" or "mysql"
+        provider: "pg", // or "pg" or "mysql",
+        schema: schema
     }),
     trustedOrigins: ["muscle-buddy://*",
         // Development mode - Expo's exp:// scheme with local IP ranges
@@ -19,5 +21,4 @@ export const auth = betterAuth({
             "exp://192.168.*.*:*/**",      // Trust 192.168.x.x IP range with any port and path
         ] : [])
     ]
-
 });
