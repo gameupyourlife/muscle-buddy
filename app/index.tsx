@@ -57,6 +57,13 @@ export default function Screen() {
                         Update the screens and components to match your design and logic.
                     </Text>
                 </View>
+                <View>
+                    <Button onPress={() => authClient.signOut()} variant="outline">
+                        <Text>
+                            Sign out
+                        </Text>
+                    </Button>
+                </View>
             </View>
         </>
     );

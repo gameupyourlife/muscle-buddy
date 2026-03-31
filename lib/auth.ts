@@ -5,9 +5,18 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from './db/schema';
 
 export const auth = betterAuth({
+    appName: "Muscle Buddy",
     plugins: [expo()],
     emailAndPassword: {
-        enabled: true, // Enable authentication using email and password.
+        enabled: true,
+        minPasswordLength: 8,
+        maxPasswordLength: 128,
+        resetPasswordTokenExpiresIn: 60 * 30,
+        revokeSessionsOnPasswordReset: true,
+        sendResetPassword: async ({ user, url }) => {
+            // Replace this with a real mail provider in production.
+            console.log(`[Better Auth] Reset password link for ${user.email}: ${url}`);
+        },
     },
     database: drizzleAdapter(db, {
         provider: "pg", // or "pg" or "mysql",

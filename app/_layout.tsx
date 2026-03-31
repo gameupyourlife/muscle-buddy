@@ -68,14 +68,9 @@ const SIGN_IN_SCREEN_OPTIONS = {
 };
 
 const SIGN_UP_SCREEN_OPTIONS = {
-    presentation: 'modal',
-    title: '',
-    headerTransparent: true,
-    gestureEnabled: false,
+    headerShown: false,
 } as const;
 
 const DEFAULT_AUTH_SCREEN_OPTIONS = {
-    title: '',
-    headerShadowVisible: false,
-    headerTransparent: true,
+    headerShown: false,
 };
