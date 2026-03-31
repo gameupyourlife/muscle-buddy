@@ -59,6 +59,12 @@ export default function Screen() {
                     </Text>
                 </View>
                 <View className="w-full max-w-sm gap-3">
+                    <Link href="/account" asChild>
+                        <Button>
+                            <Text>Manage account</Text>
+                        </Button>
+                    </Link>
+
                     <Button onPress={() => authClient.signOut()} variant="outline">
                         <Text>
                             Sign out
