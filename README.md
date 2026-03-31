@@ -1,3 +1,7 @@
+# Commands
+Generate Auth Schema: `npx auth@latest generate --output ./lib/db/auth-schema.ts`
+
+
 # Clerk Auth Template
 
 This is a [React Native](https://reactnative.dev) project built with [Expo](https://expo.dev), [Clerk](https://go.clerk.com/gjgxNgT), and [React Native Reusables](https://reactnativereusables.com).
@@ -51,7 +55,7 @@ Or scan the QR code with the [Expo Go](https://expo.dev/go) app to test on your 
 ## Project Features
 
 - ⚛️ Built with [Expo Router](https://expo.dev/router)
-- 🔐 Authentication powered by [Clerk](https://go.clerk.com/Q1MKAz0)
+- 🔐 Authentication powered by [https://better-auth.com/](https://better-auth.com/)
 - 🎨 Styled with [Tailwind CSS](https://tailwindcss.com/) via [Nativewind](https://www.nativewind.dev/)
 - 📦 UI powered by [React Native Reusables](https://github.com/founded-labs/react-native-reusables)
 - 🚀 New Architecture enabled
@@ -60,7 +64,7 @@ Or scan the QR code with the [Expo Go](https://expo.dev/go) app to test on your 
 
 ## Learn More
 
-- [Clerk Docs](https://go.clerk.com/Q1MKAz0)
+- [Clerk Docs](https://better-auth.com/docs)
 - [React Native Docs](https://reactnative.dev/docs/getting-started)
 - [Expo Docs](https://docs.expo.dev/)
 - [Nativewind Docs](https://www.nativewind.dev/)
