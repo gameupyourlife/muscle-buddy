@@ -1,10 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Text } from "@/components/ui/text";
 import { authClient } from "@/lib/auth-client";
 import * as Linking from "expo-linking";
@@ -360,200 +356,210 @@ export default function AccountScreen() {
             <Stack.Screen options={{ title: "Account" }} />
 
             <ScrollView
-                className="flex-1 bg-background"
+                className="flex-1 bg-black"
                 contentInsetAdjustmentBehavior="automatic"
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32 }}
                 keyboardShouldPersistTaps="handled"
             >
-                <Card className="border-border/70 bg-card/95">
-                    <CardHeader>
-                        <CardTitle>Profile</CardTitle>
-                        <CardDescription>View your account details and keep your profile up to date.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="gap-4">
-                        <View className="flex-row items-center gap-4">
-                            <Avatar className="size-14 border border-border/70">
-                                <AvatarImage source={{ uri: user.image || undefined }} />
-                                <AvatarFallback>
-                                    <Text className="text-sm font-semibold">{initials}</Text>
-                                </AvatarFallback>
-                            </Avatar>
+                <Text className="text-[#8e8e93] text-[13px] uppercase font-semibold ml-4 mb-2 mt-6">Profile</Text>
+                <View className="bg-[#1c1c1e] rounded-[28px] overflow-hidden">
+                    <View className="flex-row items-center p-4 border-b border-[#38383a]">
+                        <Avatar className="size-14 border border-[#38383a] mr-4" alt={user.name || user.email}>
+                            <AvatarImage source={{ uri: user.image || undefined }} />
+                            <AvatarFallback>
+                                <Text className="text-sm font-semibold">{initials}</Text>
+                            </AvatarFallback>
+                        </Avatar>
 
-                            <View className="flex-1 gap-1">
-                                <Text className="text-base font-semibold">{user.name}</Text>
-                                <Text selectable className="text-sm text-muted-foreground">
-                                    {user.email}
+                        <View className="flex-1 justify-center gap-1">
+                            <Text className="text-white text-[17px] font-semibold">{user.name}</Text>
+                            <Text selectable className="text-[#8e8e93] text-[13px]">
+                                {user.email}
+                            </Text>
+                            <View className="flex-row items-center mt-1">
+                                <Text className="text-[#8e8e93] text-[13px] mr-2">
+                                    {user.emailVerified ? "Verified" : "Not verified"}
                                 </Text>
-                                <View className="flex-row items-center gap-2">
-                                    <Badge variant={user.emailVerified ? "default" : "outline"}>
-                                        <Text>{user.emailVerified ? "Email verified" : "Email not verified"}</Text>
-                                    </Badge>
-                                    <Text className="text-xs text-muted-foreground">Joined {joinedOn}</Text>
-                                </View>
+                                <Text className="text-[#8e8e93] text-[13px]">• Joined {joinedOn}</Text>
                             </View>
                         </View>
+                    </View>
 
-                        <Separator />
-
-                        <View className="gap-2">
-                            <Label nativeID="account-name">Display name</Label>
-                            <Input
-                                aria-labelledby="account-name"
-                                value={name}
-                                onChangeText={setName}
-                                placeholder="Your full name"
-                                autoCapitalize="words"
-                                autoComplete="name"
-                            />
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mr-4">Display Name</Text>
+                        <Input
+                            aria-labelledby="account-name"
+                            value={name}
+                            onChangeText={setName}
+                            placeholder="Your full name"
+                            autoCapitalize="words"
+                            autoComplete="name"
+                            className="flex-1 text-right border-0 bg-transparent text-white"
+                        />
+                    </View>
+                    
+                    {profileFeedback && (
+                        <View className="p-4 border-b border-[#38383a]">
+                            <Text className={profileFeedback.type === "success" ? "text-green-500" : "text-red-500"}>
+                                {profileFeedback.message}
+                            </Text>
                         </View>
+                    )}
 
-                        <FeedbackBanner feedback={profileFeedback} />
+                    <Button 
+                        variant="ghost" 
+                        onPress={handleUpdateProfile} 
+                        disabled={!canUpdateProfile} 
+                        className="flex-row justify-center p-4 h-auto rounded-none border-0"
+                    >
+                        {isUpdatingProfile && <ActivityIndicator color="white" size="small" className="mr-2" />}
+                        <Text className="text-white text-[17px]">{isUpdatingProfile ? "Saving..." : "Save profile"}</Text>
+                    </Button>
+                </View>
 
-                        <Button onPress={handleUpdateProfile} disabled={!canUpdateProfile} className="h-11">
-                            {isUpdatingProfile ? <ActivityIndicator color="white" size="small" /> : null}
-                            <Text>{isUpdatingProfile ? "Saving..." : "Save profile"}</Text>
-                        </Button>
-                    </CardContent>
-                </Card>
+                <Text className="text-[#8e8e93] text-[13px] uppercase font-semibold ml-4 mb-2 mt-6">Change Email</Text>
+                <View className="bg-[#1c1c1e] rounded-[28px] overflow-hidden">
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px]">Current Email</Text>
+                        <Text className="text-[#8e8e93] text-[17px]">{user.email}</Text>
+                    </View>
 
-                <Card className="border-border/70 bg-card/95">
-                    <CardHeader>
-                        <CardTitle>Change email</CardTitle>
-                        <CardDescription>
-                            Request an email change. You will confirm it from your current inbox.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="gap-4">
-                        <View className="gap-2">
-                            <Label nativeID="account-current-email">Current email</Label>
-                            <Input
-                                aria-labelledby="account-current-email"
-                                editable={false}
-                                value={user.email}
-                            />
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mr-4">New Email</Text>
+                        <Input
+                            aria-labelledby="account-new-email"
+                            value={newEmail}
+                            onChangeText={setNewEmail}
+                            placeholder="new-email@example.com"
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            keyboardType="email-address"
+                            textContentType="emailAddress"
+                            className="flex-1 text-right border-0 bg-transparent text-white"
+                        />
+                    </View>
+
+                    {emailFeedback && (
+                        <View className="p-4 border-b border-[#38383a]">
+                            <Text className={emailFeedback.type === "success" ? "text-green-500" : "text-red-500"}>
+                                {emailFeedback.message}
+                            </Text>
                         </View>
+                    )}
 
-                        <View className="gap-2">
-                            <Label nativeID="account-new-email">New email</Label>
-                            <Input
-                                aria-labelledby="account-new-email"
-                                value={newEmail}
-                                onChangeText={setNewEmail}
-                                placeholder="new-email@example.com"
-                                autoCapitalize="none"
-                                autoComplete="email"
-                                keyboardType="email-address"
-                                textContentType="emailAddress"
-                            />
+                    <Button 
+                        variant="ghost" 
+                        onPress={handleChangeEmail} 
+                        disabled={!canChangeEmail} 
+                        className="flex-row justify-center p-4 h-auto rounded-none border-0"
+                    >
+                        {isChangingEmail && <ActivityIndicator color="white" size="small" className="mr-2" />}
+                        <Text className="text-white text-[17px]">{isChangingEmail ? "Submitting..." : "Request email change"}</Text>
+                    </Button>
+                </View>
+
+                <Text className="text-[#8e8e93] text-[13px] uppercase font-semibold ml-4 mb-2 mt-6">Change Password</Text>
+                <View className="bg-[#1c1c1e] rounded-[28px] overflow-hidden">
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mr-4 w-1/3">Current Password</Text>
+                        <Input
+                            aria-labelledby="account-current-password"
+                            value={currentPassword}
+                            onChangeText={setCurrentPassword}
+                            secureTextEntry
+                            autoCapitalize="none"
+                            autoComplete="password"
+                            textContentType="password"
+                            placeholder="Current password"
+                            className="flex-1 text-right border-0 bg-transparent text-white"
+                        />
+                    </View>
+
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mr-4 w-1/3">New Password</Text>
+                        <Input
+                            aria-labelledby="account-new-password"
+                            value={newPassword}
+                            onChangeText={setNewPassword}
+                            secureTextEntry
+                            autoCapitalize="none"
+                            autoComplete="new-password"
+                            textContentType="newPassword"
+                            placeholder="Min 8 chars"
+                            className="flex-1 text-right border-0 bg-transparent text-white"
+                        />
+                    </View>
+
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mr-4 w-1/3">Confirm Password</Text>
+                        <Input
+                            aria-labelledby="account-confirm-password"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry
+                            autoCapitalize="none"
+                            autoComplete="new-password"
+                            textContentType="newPassword"
+                            placeholder="Re-enter password"
+                            className="flex-1 text-right border-0 bg-transparent text-white"
+                        />
+                    </View>
+
+                    {!!passwordValidationError && (
+                        <View className="p-4 border-b border-[#38383a]">
+                            <Text className="text-red-500 text-[15px]">{passwordValidationError}</Text>
                         </View>
-
-                        <FeedbackBanner feedback={emailFeedback} />
-
-                        <Button onPress={handleChangeEmail} disabled={!canChangeEmail} className="h-11">
-                            {isChangingEmail ? <ActivityIndicator color="white" size="small" /> : null}
-                            <Text>{isChangingEmail ? "Submitting..." : "Request email change"}</Text>
-                        </Button>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-border/70 bg-card/95">
-                    <CardHeader>
-                        <CardTitle>Change password</CardTitle>
-                        <CardDescription>
-                            Update your password and automatically revoke other active sessions.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="gap-4">
-                        <View className="gap-2">
-                            <Label nativeID="account-current-password">Current password</Label>
-                            <Input
-                                aria-labelledby="account-current-password"
-                                value={currentPassword}
-                                onChangeText={setCurrentPassword}
-                                secureTextEntry
-                                autoCapitalize="none"
-                                autoComplete="password"
-                                textContentType="password"
-                                placeholder="Enter your current password"
-                            />
+                    )}
+                    
+                    {passwordFeedback && (
+                        <View className="p-4 border-b border-[#38383a]">
+                            <Text className={passwordFeedback.type === "success" ? "text-green-500" : "text-red-500"}>
+                                {passwordFeedback.message}
+                            </Text>
                         </View>
+                    )}
 
-                        <View className="gap-2">
-                            <Label nativeID="account-new-password">New password</Label>
-                            <Input
-                                aria-labelledby="account-new-password"
-                                value={newPassword}
-                                onChangeText={setNewPassword}
-                                secureTextEntry
-                                autoCapitalize="none"
-                                autoComplete="new-password"
-                                textContentType="newPassword"
-                                placeholder="At least 8 characters"
-                            />
+                    <Button 
+                        variant="ghost" 
+                        onPress={handleChangePassword} 
+                        disabled={!canChangePassword} 
+                        className="flex-row justify-center p-4 h-auto rounded-none border-0"
+                    >
+                        {isChangingPassword && <ActivityIndicator color="white" size="small" className="mr-2" />}
+                        <Text className="text-white text-[17px]">{isChangingPassword ? "Updating..." : "Change password"}</Text>
+                    </Button>
+                </View>
+
+                <Text className="text-[#8e8e93] text-[13px] uppercase font-semibold ml-4 mb-2 mt-6">Sessions & Security</Text>
+                <View className="bg-[#1c1c1e] rounded-[28px] overflow-hidden">
+                    {sessionFeedback && (
+                        <View className="p-4 border-b border-[#38383a]">
+                            <Text className={sessionFeedback.type === "success" ? "text-green-500" : "text-red-500"}>
+                                {sessionFeedback.message}
+                            </Text>
                         </View>
+                    )}
 
-                        <View className="gap-2">
-                            <Label nativeID="account-confirm-password">Confirm new password</Label>
-                            <Input
-                                aria-labelledby="account-confirm-password"
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                secureTextEntry
-                                autoCapitalize="none"
-                                autoComplete="new-password"
-                                textContentType="newPassword"
-                                placeholder="Re-enter your new password"
-                            />
-                        </View>
+                    <Button
+                        variant="ghost"
+                        onPress={handleRevokeOtherSessions}
+                        disabled={isRevokingOtherSessions}
+                        className="flex-row justify-center p-4 h-auto rounded-none border-b border-[#38383a]"
+                    >
+                        {isRevokingOtherSessions && <ActivityIndicator size="small" className="mr-2" />}
+                        <Text className="text-white text-[17px]">{isRevokingOtherSessions ? "Revoking..." : "Sign out other sessions"}</Text>
+                    </Button>
 
-                        {!!passwordValidationError && (
-                            <View className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
-                                <Text selectable className="text-sm text-destructive">
-                                    {passwordValidationError}
-                                </Text>
-                            </View>
-                        )}
-
-                        <FeedbackBanner feedback={passwordFeedback} />
-
-                        <Button onPress={handleChangePassword} disabled={!canChangePassword} className="h-11">
-                            {isChangingPassword ? <ActivityIndicator color="white" size="small" /> : null}
-                            <Text>{isChangingPassword ? "Updating..." : "Change password"}</Text>
-                        </Button>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-border/70 bg-card/95">
-                    <CardHeader>
-                        <CardTitle>Sessions and security</CardTitle>
-                        <CardDescription>
-                            Manage where your account is signed in and secure your current session.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="gap-3">
-                        <FeedbackBanner feedback={sessionFeedback} />
-
-                        <Button
-                            variant="outline"
-                            onPress={handleRevokeOtherSessions}
-                            disabled={isRevokingOtherSessions}
-                            className="h-11"
-                        >
-                            {isRevokingOtherSessions ? <ActivityIndicator size="small" /> : null}
-                            <Text>{isRevokingOtherSessions ? "Revoking..." : "Sign out other sessions"}</Text>
-                        </Button>
-
-                        <Button
-                            variant="destructive"
-                            onPress={handleSignOut}
-                            disabled={isSigningOut}
-                            className="h-11"
-                        >
-                            {isSigningOut ? <ActivityIndicator color="white" size="small" /> : null}
-                            <Text>{isSigningOut ? "Signing out..." : "Sign out"}</Text>
-                        </Button>
-                    </CardContent>
-                </Card>
+                    <Button
+                        variant="ghost"
+                        onPress={handleSignOut}
+                        disabled={isSigningOut}
+                        className="flex-row justify-center p-4 h-auto rounded-none border-0"
+                    >
+                        {isSigningOut && <ActivityIndicator color="white" size="small" className="mr-2" />}
+                        <Text className="text-red-500 text-[17px] font-semibold">{isSigningOut ? "Signing out..." : "Sign out"}</Text>
+                    </Button>
+                </View>
             </ScrollView>
         </>
     );

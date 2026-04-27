@@ -1,0 +1,265 @@
+export type StarterExerciseSeed = {
+  id: string;
+  name: string;
+  slug: string;
+  muscleGroup: string;
+  equipment: string;
+  isCompound: boolean;
+};
+
+export type StarterTemplateExerciseSeed = {
+  id: string;
+  exerciseId: string;
+  dayOfWeek: number;
+  sortOrder: number;
+  targetSets: number;
+  targetReps: number;
+  targetWeight: number | null;
+  notes: string | null;
+};
+
+export type StarterTemplateSeed = {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: string;
+  weeklyTarget: number;
+  exercises: StarterTemplateExerciseSeed[];
+};
+
+export const STARTER_EXERCISES: StarterExerciseSeed[] = [
+  {
+    id: 'starter-squat',
+    name: 'Barbell Back Squat',
+    slug: 'barbell-back-squat',
+    muscleGroup: 'legs',
+    equipment: 'barbell',
+    isCompound: true,
+  },
+  {
+    id: 'starter-bench-press',
+    name: 'Barbell Bench Press',
+    slug: 'barbell-bench-press',
+    muscleGroup: 'chest',
+    equipment: 'barbell',
+    isCompound: true,
+  },
+  {
+    id: 'starter-deadlift',
+    name: 'Conventional Deadlift',
+    slug: 'conventional-deadlift',
+    muscleGroup: 'posterior-chain',
+    equipment: 'barbell',
+    isCompound: true,
+  },
+  {
+    id: 'starter-overhead-press',
+    name: 'Standing Overhead Press',
+    slug: 'standing-overhead-press',
+    muscleGroup: 'shoulders',
+    equipment: 'barbell',
+    isCompound: true,
+  },
+  {
+    id: 'starter-lat-pulldown',
+    name: 'Lat Pulldown',
+    slug: 'lat-pulldown',
+    muscleGroup: 'back',
+    equipment: 'cable',
+    isCompound: true,
+  },
+  {
+    id: 'starter-leg-curl',
+    name: 'Seated Leg Curl',
+    slug: 'seated-leg-curl',
+    muscleGroup: 'hamstrings',
+    equipment: 'machine',
+    isCompound: false,
+  },
+  {
+    id: 'starter-bicep-curl',
+    name: 'Dumbbell Bicep Curl',
+    slug: 'dumbbell-bicep-curl',
+    muscleGroup: 'arms',
+    equipment: 'dumbbell',
+    isCompound: false,
+  },
+  {
+    id: 'starter-tricep-pushdown',
+    name: 'Cable Tricep Pushdown',
+    slug: 'cable-tricep-pushdown',
+    muscleGroup: 'arms',
+    equipment: 'cable',
+    isCompound: false,
+  },
+];
+
+export const STARTER_TEMPLATES: StarterTemplateSeed[] = [
+  {
+    id: 'template-beginner-full-body',
+    name: 'Beginner Full Body',
+    description: 'Three full body sessions for beginners with progressive overload.',
+    difficulty: 'beginner',
+    weeklyTarget: 3,
+    exercises: [
+      {
+        id: 'template-beginner-full-body-1',
+        exerciseId: 'starter-squat',
+        dayOfWeek: 1,
+        sortOrder: 1,
+        targetSets: 3,
+        targetReps: 8,
+        targetWeight: 60,
+        notes: 'Warm up first and leave 2 reps in reserve.',
+      },
+      {
+        id: 'template-beginner-full-body-2',
+        exerciseId: 'starter-bench-press',
+        dayOfWeek: 1,
+        sortOrder: 2,
+        targetSets: 3,
+        targetReps: 8,
+        targetWeight: 45,
+        notes: null,
+      },
+      {
+        id: 'template-beginner-full-body-3',
+        exerciseId: 'starter-lat-pulldown',
+        dayOfWeek: 3,
+        sortOrder: 3,
+        targetSets: 3,
+        targetReps: 10,
+        targetWeight: 40,
+        notes: null,
+      },
+      {
+        id: 'template-beginner-full-body-4',
+        exerciseId: 'starter-overhead-press',
+        dayOfWeek: 5,
+        sortOrder: 4,
+        targetSets: 3,
+        targetReps: 8,
+        targetWeight: 30,
+        notes: null,
+      },
+    ],
+  },
+  {
+    id: 'template-strength-5x5',
+    name: 'Strength 5x5',
+    description: 'A classic strength split focused on heavy compounds.',
+    difficulty: 'intermediate',
+    weeklyTarget: 3,
+    exercises: [
+      {
+        id: 'template-strength-5x5-1',
+        exerciseId: 'starter-squat',
+        dayOfWeek: 1,
+        sortOrder: 1,
+        targetSets: 5,
+        targetReps: 5,
+        targetWeight: 80,
+        notes: null,
+      },
+      {
+        id: 'template-strength-5x5-2',
+        exerciseId: 'starter-bench-press',
+        dayOfWeek: 1,
+        sortOrder: 2,
+        targetSets: 5,
+        targetReps: 5,
+        targetWeight: 60,
+        notes: null,
+      },
+      {
+        id: 'template-strength-5x5-3',
+        exerciseId: 'starter-deadlift',
+        dayOfWeek: 3,
+        sortOrder: 3,
+        targetSets: 3,
+        targetReps: 5,
+        targetWeight: 100,
+        notes: 'Keep form strict before adding load.',
+      },
+      {
+        id: 'template-strength-5x5-4',
+        exerciseId: 'starter-overhead-press',
+        dayOfWeek: 5,
+        sortOrder: 4,
+        targetSets: 5,
+        targetReps: 5,
+        targetWeight: 45,
+        notes: null,
+      },
+    ],
+  },
+  {
+    id: 'template-hypertrophy-upper-lower',
+    name: 'Hypertrophy Upper/Lower',
+    description: 'Four sessions with moderate loads and higher volume.',
+    difficulty: 'intermediate',
+    weeklyTarget: 4,
+    exercises: [
+      {
+        id: 'template-hypertrophy-upper-lower-1',
+        exerciseId: 'starter-bench-press',
+        dayOfWeek: 1,
+        sortOrder: 1,
+        targetSets: 4,
+        targetReps: 10,
+        targetWeight: 55,
+        notes: null,
+      },
+      {
+        id: 'template-hypertrophy-upper-lower-2',
+        exerciseId: 'starter-lat-pulldown',
+        dayOfWeek: 1,
+        sortOrder: 2,
+        targetSets: 4,
+        targetReps: 12,
+        targetWeight: 42,
+        notes: null,
+      },
+      {
+        id: 'template-hypertrophy-upper-lower-3',
+        exerciseId: 'starter-squat',
+        dayOfWeek: 3,
+        sortOrder: 3,
+        targetSets: 4,
+        targetReps: 8,
+        targetWeight: 72,
+        notes: null,
+      },
+      {
+        id: 'template-hypertrophy-upper-lower-4',
+        exerciseId: 'starter-leg-curl',
+        dayOfWeek: 3,
+        sortOrder: 4,
+        targetSets: 4,
+        targetReps: 12,
+        targetWeight: 35,
+        notes: null,
+      },
+      {
+        id: 'template-hypertrophy-upper-lower-5',
+        exerciseId: 'starter-bicep-curl',
+        dayOfWeek: 5,
+        sortOrder: 5,
+        targetSets: 3,
+        targetReps: 12,
+        targetWeight: 16,
+        notes: null,
+      },
+      {
+        id: 'template-hypertrophy-upper-lower-6',
+        exerciseId: 'starter-tricep-pushdown',
+        dayOfWeek: 5,
+        sortOrder: 6,
+        targetSets: 3,
+        targetReps: 12,
+        targetWeight: 20,
+        notes: null,
+      },
+    ],
+  },
+];

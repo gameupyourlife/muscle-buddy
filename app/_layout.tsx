@@ -54,9 +54,8 @@ function Routes() {
 
             {/* Screens only shown when the user IS signed in */}
             <Stack.Protected guard={isSignedIn}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="account" options={ACCOUNT_SCREEN_OPTIONS} />
-                <Stack.Screen name="dev-options" options={DEV_OPTIONS_SCREEN_OPTIONS} />
+                <Stack.Screen name="index" options={INDEX_SCREEN_OPTIONS} />
+                <Stack.Screen name="workouts" options={WORKOUTS_SCREEN_OPTIONS} />
             </Stack.Protected>
 
             {/* Screens outside the guards are accessible to everyone (e.g. not found) */}
@@ -77,10 +76,10 @@ const DEFAULT_AUTH_SCREEN_OPTIONS = {
     headerShown: false,
 };
 
-const DEV_OPTIONS_SCREEN_OPTIONS = {
-    title: 'Developer Options',
+const INDEX_SCREEN_OPTIONS = {
+    headerShown: false,
 };
 
-const ACCOUNT_SCREEN_OPTIONS = {
-    title: 'Account',
+const WORKOUTS_SCREEN_OPTIONS = {
+    headerShown: false,
 };

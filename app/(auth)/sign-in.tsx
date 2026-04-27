@@ -8,12 +8,12 @@ import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -121,8 +121,8 @@ export default function SignInScreen() {
                         contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 20 }}
                         keyboardShouldPersistTaps="handled"
                     >
-                        <View className="mx-auto w-full max-w-md gap-5">
-                            <View className="gap-2">
+                        <View className="mx-auto w-full max-w-md gap-6 p-6">
+                            <View className="gap-2 px-2">
                                 <Text className="text-sm uppercase tracking-[2px] text-primary">Muscle Buddy</Text>
                                 <Text variant="h3" className="text-foreground">
                                     Welcome back
@@ -132,12 +132,12 @@ export default function SignInScreen() {
                                 </Text>
                             </View>
 
-                            <Card className="border-border/70 bg-card/95">
-                                <CardHeader className="gap-1">
+                            <Card className="rounded-3xl border-border/10 bg-card p-4 flex-col gap-4">
+                                <CardHeader className="gap-1 px-4 pt-4">
                                     <CardTitle>Sign in</CardTitle>
                                     <CardDescription>Use your email and password to access your account.</CardDescription>
                                 </CardHeader>
-                                <CardContent className="gap-4">
+                                <CardContent className="gap-4 p-4">
                                     <View className="gap-2">
                                         <Label nativeID="sign-in-email">Email</Label>
                                         <Input

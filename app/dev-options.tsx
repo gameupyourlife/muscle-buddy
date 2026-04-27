@@ -1,64 +1,16 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
+import { getApiBaseUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
-import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
-import { ActivityIndicator, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
 
 type SendStatus =
     | { type: 'success'; message: string }
     | { type: 'error'; message: string }
     | null;
-
-type ConstantsWithManifest = typeof Constants & {
-    manifest2?: {
-        extra?: {
-            expoClient?: {
-                hostUri?: string;
-            };
-        };
-    };
-};
-
-
-
-function trimTrailingSlash(value: string) {
-    return value.endsWith('/') ? value.slice(0, -1) : value;
-}
-
-function getApiBaseUrl() {
-    const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
-    if (configuredBaseUrl) {
-        return trimTrailingSlash(configuredBaseUrl);
-    }
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
-        return trimTrailingSlash(window.location.origin);
-    }
-
-    const constants = Constants as ConstantsWithManifest;
-    const expoConfigHost = (constants.expoConfig as { hostUri?: string } | null)?.hostUri;
-    const hostUri = expoConfigHost ?? constants.manifest2?.extra?.expoClient?.hostUri;
-
-    if (!hostUri) {
-        return null;
-    }
-
-    const host = hostUri
-        .replace(/^https?:\/\//, '')
-        .replace(/^exp:\/\//, '')
-        .split('/')[0];
-
-    if (!host) {
-        return null;
-    }
-
-    return `http://${host}`;
-}
 
 function getErrorMessage(error: unknown, fallback: string) {
     if (typeof error === 'object' && error !== null && 'message' in error) {
@@ -108,11 +60,19 @@ export default function DeveloperOptionsScreen() {
         setIsSending(true);
 
         try {
+            const cookies = authClient.getCookie();
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+            });
+
+            if (cookies) {
+                headers.set('Cookie', cookies);
+            }
+
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
+                credentials: 'omit',
                 body: JSON.stringify({
                     to: to.trim(),
                     subject: subject.trim(),
@@ -145,87 +105,83 @@ export default function DeveloperOptionsScreen() {
         <>
             <Stack.Screen options={{ title: 'Developer Options' }} />
             <ScrollView
-                className="flex-1 bg-background"
+                className="flex-1 bg-black"
                 contentInsetAdjustmentBehavior="automatic"
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32 }}
                 keyboardShouldPersistTaps="handled"
             >
-                <Card className="border-border/70 bg-card/95">
-                    <CardHeader className="gap-2">
-                        <CardTitle>Send test email</CardTitle>
-                        <CardDescription>
-                            Trigger the API route directly from the app to validate your Resend setup.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="gap-4">
-                        <View className="gap-2">
-                            <Label nativeID="dev-email-to">To</Label>
-                            <Input
-                                aria-labelledby="dev-email-to"
-                                value={to}
-                                onChangeText={setTo}
-                                placeholder="you@example.com"
-                                autoCapitalize="none"
-                                autoComplete="email"
-                                keyboardType="email-address"
-                                textContentType="emailAddress"
-                            />
-                        </View>
+                <Text className="text-[#8e8e93] text-[13px] uppercase font-semibold ml-4 mb-2 mt-6">
+                    Test Email
+                </Text>
+                <View className="bg-[#1c1c1e] rounded-[28px] overflow-hidden">
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mr-4">To</Text>
+                        <Input
+                            aria-labelledby="dev-email-to"
+                            value={to}
+                            onChangeText={setTo}
+                            placeholder="you@example.com"
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            keyboardType="email-address"
+                            textContentType="emailAddress"
+                            className="flex-1 text-right border-0 bg-transparent h-auto"
+                        />
+                    </View>
 
-                        <View className="gap-2">
-                            <Label nativeID="dev-email-subject">Subject</Label>
-                            <Input
-                                aria-labelledby="dev-email-subject"
-                                value={subject}
-                                onChangeText={setSubject}
-                                placeholder="Enter an email subject"
-                            />
-                        </View>
+                    <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mr-4">Subject</Text>
+                        <Input
+                            aria-labelledby="dev-email-subject"
+                            value={subject}
+                            onChangeText={setSubject}
+                            placeholder="Enter an email subject"
+                            className="flex-1 text-right border-0 bg-transparent h-auto"
+                        />
+                    </View>
 
-                        <View className="gap-2">
-                            <Label nativeID="dev-email-message">Message</Label>
-                            <Input
-                                aria-labelledby="dev-email-message"
-                                value={message}
-                                onChangeText={setMessage}
-                                placeholder="Enter the email text body"
-                                multiline
-                                numberOfLines={4}
-                                textAlignVertical="top"
-                                className="min-h-[112px]"
-                            />
-                        </View>
+                    <View className="flex-col justify-start p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mb-2">Message</Text>
+                        <Input
+                            aria-labelledby="dev-email-message"
+                            value={message}
+                            onChangeText={setMessage}
+                            placeholder="Enter the email text body"
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            className="w-full border-0 bg-transparent min-h-[112px] p-0"
+                        />
+                    </View>
 
-                        <View className="rounded-md border border-border/60 bg-muted/40 p-3">
-                            <Text className="text-xs text-muted-foreground">Endpoint</Text>
-                            <Text selectable className="text-sm text-foreground">
-                                {endpoint ?? 'Set EXPO_PUBLIC_API_BASE_URL to enable API calls on native builds.'}
+                    <View className="flex-col justify-start p-4 border-b border-[#38383a]">
+                        <Text className="text-white text-[17px] mb-1">Endpoint</Text>
+                        <Text selectable className="text-[#8e8e93] text-[13px]">
+                            {endpoint ?? 'Set EXPO_PUBLIC_API_BASE_URL to enable API calls on native builds.'}
+                        </Text>
+                    </View>
+
+                    {status && (
+                        <View className="flex-col justify-start p-4 border-b border-[#38383a]">
+                            <Text
+                                selectable
+                                className={status.type === 'success' ? 'text-green-500 text-[15px]' : 'text-red-500 text-[15px]'}
+                            >
+                                {status.message}
                             </Text>
                         </View>
+                    )}
 
-                        {status && (
-                            <View
-                                className={
-                                    status.type === 'success'
-                                        ? 'rounded-md border border-primary/30 bg-primary/10 p-3'
-                                        : 'rounded-md border border-destructive/30 bg-destructive/10 p-3'
-                                }
-                            >
-                                <Text
-                                    selectable
-                                    className={status.type === 'success' ? 'text-sm text-primary' : 'text-sm text-destructive'}
-                                >
-                                    {status.message}
-                                </Text>
-                            </View>
-                        )}
-
-                        <Button onPress={handleSendTestEmail} disabled={!canSend} className="h-11">
-                            {isSending ? <ActivityIndicator color="white" size="small" /> : null}
-                            <Text>{isSending ? 'Sending...' : 'Send test email'}</Text>
-                        </Button>
-                    </CardContent>
-                </Card>
+                    <Button 
+                        variant="ghost"
+                        onPress={handleSendTestEmail} 
+                        disabled={!canSend} 
+                        className="flex-row items-center justify-center p-4 h-auto rounded-none border-0"
+                    >
+                        {isSending ? <ActivityIndicator color="white" size="small" className="mr-2" /> : null}
+                        <Text className="text-white text-[17px]">{isSending ? 'Sending...' : 'Send test email'}</Text>
+                    </Button>
+                </View>
             </ScrollView>
         </>
     );
