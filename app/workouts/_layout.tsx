@@ -1,13 +1,10 @@
 import { Icon } from '@/components/ui/icon';
-import { useColorScheme } from 'nativewind';
 import { Tabs } from 'expo-router';
 import { ClipboardListIcon, DumbbellIcon, HouseIcon, SaladIcon, Settings2Icon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WorkoutsLayout() {
-  const { colorScheme } = useColorScheme();
   const insets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
   const safeBottom = Math.max(insets.bottom, 8);
 
   const activeTintColor = '#ffffff';
@@ -51,19 +48,19 @@ export default function WorkoutsLayout() {
         }}
       />
       <Tabs.Screen
-        name="plans"
-        options={{
-          title: 'Plans',
-          tabBarLabel: 'Plans',
-          tabBarIcon: ({ color, size }) => <Icon as={ClipboardListIcon} color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
         name="tracker"
         options={{
           title: 'Tracker',
-          tabBarLabel: 'Track',
+          tabBarLabel: 'Train',
           tabBarIcon: ({ color, size }) => <Icon as={DumbbellIcon} color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="plans"
+        options={{
+          title: 'Plans',
+          tabBarLabel: 'Plan',
+          tabBarIcon: ({ color, size }) => <Icon as={ClipboardListIcon} color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -78,7 +75,7 @@ export default function WorkoutsLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarLabel: 'Settings',
+          tabBarLabel: 'Me',
           tabBarIcon: ({ color, size }) => <Icon as={Settings2Icon} color={color} size={size} />,
         }}
       />

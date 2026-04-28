@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type Option } from '@/components/ui/select';
+import { OptionChips } from '@/components/ui/option-chips';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import {
@@ -11,12 +11,13 @@ import {
   WEEKLY_TARGET_OPTIONS,
   useWorkoutsData,
 } from '@/lib/workouts/use-workouts';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WorkoutPlansScreen() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const {
@@ -43,12 +44,6 @@ export default function WorkoutPlansScreen() {
     savePlanChanges,
   } = useWorkoutsData();
 
-  const selectedPlanEditorExerciseOption: Option =
-    exerciseSelectOptions.find((option) => option.value === planEditorExerciseId) ?? undefined;
-
-  const weeklyTargetOption: Option =
-    WEEKLY_TARGET_OPTIONS.find((option) => option.value === planEditorWeeklyTarget) ?? undefined;
-
   const featuredTemplate = useMemo(() => templates[0] ?? null, [templates]);
   const additionalTemplates = useMemo(() => templates.slice(1), [templates]);
   const isCompact = width < 420;
@@ -69,6 +64,40 @@ export default function WorkoutPlansScreen() {
           gap: 24,
         }}
       >
+        <Card className="border-border/70 bg-card/95">
+          <CardHeader>
+            <CardTitle>Plan Setup Flow</CardTitle>
+            <CardDescription>
+              Pick a template or start empty, adjust sets/reps, then open Tracker to execute your session.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="gap-3">
+            <Text className="text-xs text-muted-foreground" selectable>
+              Step 1: Choose a starter. Step 2: Edit your weekly structure. Step 3: Save changes and track today's session.
+            </Text>
+            <View className="gap-2" style={{ flexDirection: isCompact ? 'column' : 'row' }}>
+              {featuredTemplate ? (
+                <Button
+                  className="flex-1"
+                  variant="secondary"
+                  onPress={() => createPlanFromTemplate(featuredTemplate.id)}
+                  disabled={isStartingPlanSetup}
+                >
+                  {isStartingPlanSetup ? <ActivityIndicator color="black" size="small" /> : null}
+                  <Text>{isStartingPlanSetup ? 'Starting...' : `Use ${featuredTemplate.name}`}</Text>
+                </Button>
+              ) : null}
+              <Button className="flex-1" onPress={createEmptyPlan} disabled={isStartingPlanSetup}>
+                {isStartingPlanSetup ? <ActivityIndicator color="white" size="small" /> : null}
+                <Text>{isStartingPlanSetup ? 'Creating...' : 'Start empty plan'}</Text>
+              </Button>
+            </View>
+            <Button variant="outline" onPress={() => router.push('/workouts/tracker')}>
+              <Text>Open tracker</Text>
+            </Button>
+          </CardContent>
+        </Card>
+
         <View className="gap-2">
           <Text className="ml-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Current Plan
@@ -82,7 +111,7 @@ export default function WorkoutPlansScreen() {
               </Badge>
             </View>
             <CardDescription>
-              Build a weekly structure that you can actually follow. Keep it simple and editable.
+              Edit your active plan in one place: naming, weekly target, and exercise day assignments.
             </CardDescription>
           </CardHeader>
           <CardContent className="gap-4">
@@ -127,39 +156,25 @@ export default function WorkoutPlansScreen() {
 
                 <View className="gap-2">
                   <Label nativeID="plan-target">Weekly target</Label>
-                  <Select
-                    value={weeklyTargetOption}
-                    onValueChange={(option) => setPlanEditorWeeklyTarget(option?.value ?? '3')}
-                  >
-                    <SelectTrigger aria-labelledby="plan-target">
-                      <SelectValue placeholder="Pick weekly target" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {WEEKLY_TARGET_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value} label={option.label} />
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <OptionChips
+                    layout="scroll"
+                    size="sm"
+                    items={WEEKLY_TARGET_OPTIONS}
+                    value={planEditorWeeklyTarget}
+                    onValueChange={setPlanEditorWeeklyTarget}
+                  />
                 </View>
 
                 <View className="gap-2">
                   <Label nativeID="plan-add-exercise">Add exercise</Label>
-                  <View className="gap-2" style={{ flexDirection: isCompact ? 'column' : 'row' }}>
-                    <View className="flex-1">
-                      <Select
-                        value={selectedPlanEditorExerciseOption}
-                        onValueChange={(option) => setPlanEditorExerciseId(option?.value ?? '')}
-                      >
-                        <SelectTrigger aria-labelledby="plan-add-exercise">
-                          <SelectValue placeholder="Choose exercise" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {exerciseSelectOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} label={option.label} />
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </View>
+                  <View className="gap-3">
+                    <OptionChips
+                      layout="scroll"
+                      size="sm"
+                      items={exerciseSelectOptions}
+                      value={planEditorExerciseId}
+                      onValueChange={setPlanEditorExerciseId}
+                    />
                     <Button
                       variant="outline"
                       onPress={addExerciseToPlanEditor}
@@ -178,8 +193,6 @@ export default function WorkoutPlansScreen() {
 
                 {planEditorExercises.map((entry) => {
                   const exercise = exercises.find((item) => item.id === entry.exerciseId);
-                  const dayOption: Option =
-                    DAY_OPTIONS.find((day) => day.value === String(entry.dayOfWeek)) ?? undefined;
 
                   return (
                     <View key={entry.key} className="gap-3 rounded-xl border border-border/60 bg-card/80 p-3">
@@ -192,22 +205,13 @@ export default function WorkoutPlansScreen() {
 
                       <View className="gap-2">
                         <Label>Workout day</Label>
-                        <Select
-                          value={dayOption}
-                          onValueChange={(option) => {
-                            const value = Number(option?.value ?? 1);
-                            updatePlanEditorExercise(entry.key, { dayOfWeek: value });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose day" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DAY_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value} label={option.label} />
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <OptionChips
+                          layout="scroll"
+                          size="sm"
+                          items={DAY_OPTIONS}
+                          value={String(entry.dayOfWeek)}
+                          onValueChange={(value) => updatePlanEditorExercise(entry.key, { dayOfWeek: Number(value) })}
+                        />
                       </View>
 
                       <View className="gap-2" style={{ flexDirection: isCompact ? 'column' : 'row' }}>
@@ -245,6 +249,10 @@ export default function WorkoutPlansScreen() {
                 <Button onPress={savePlanChanges} disabled={isSavingPlan}>
                   {isSavingPlan ? <ActivityIndicator color="white" size="small" /> : null}
                   <Text>{isSavingPlan ? 'Saving...' : 'Save plan changes'}</Text>
+                </Button>
+
+                <Button variant="outline" onPress={() => router.push('/workouts/tracker')}>
+                  <Text>Go to tracker</Text>
                 </Button>
               </>
             ) : null}

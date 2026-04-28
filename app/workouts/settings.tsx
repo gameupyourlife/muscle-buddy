@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { authClient } from '@/lib/auth-client';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function UserSettingsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const contentPaddingTop = Math.max(12, insets.top + 4);
   const contentPaddingBottom = Math.max(28, insets.bottom + 20);
@@ -25,6 +26,33 @@ export default function UserSettingsScreen() {
           gap: 18,
         }}
       >
+        <View className="gap-2">
+          <Text className="ml-4 mb-2 text-[13px] font-semibold uppercase text-[#8e8e93]">
+            Quick Navigation
+          </Text>
+          <Card className="overflow-hidden rounded-[28px] border-0 bg-[#1c1c1e]">
+            <View className="border-b border-[#38383a] p-4">
+              <Text className="text-[14px] leading-5 text-[#8e8e93]" selectable>
+                Jump directly to the most-used features.
+              </Text>
+            </View>
+            <View className="p-4 gap-2">
+              <Button variant="outline" onPress={() => router.push('/workouts/overview')}>
+                <Text>Open home overview</Text>
+              </Button>
+              <Button variant="outline" onPress={() => router.push('/workouts/tracker')}>
+                <Text>Open tracker</Text>
+              </Button>
+              <Button variant="outline" onPress={() => router.push('/workouts/plans')}>
+                <Text>Open plans</Text>
+              </Button>
+              <Button variant="outline" onPress={() => router.push('/workouts/food-tracking')}>
+                <Text>Open food tracker</Text>
+              </Button>
+            </View>
+          </Card>
+        </View>
+
         <View className="gap-2">
           <Text className="ml-4 mb-2 text-[13px] font-semibold uppercase text-[#8e8e93]">
             Account & App

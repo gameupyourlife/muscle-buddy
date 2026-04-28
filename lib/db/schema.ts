@@ -256,6 +256,150 @@ export const xpEvents = pgTable(
   ]
 );
 
+export const foodCatalog = pgTable(
+  'food_catalog',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    brand: text('brand'),
+    barcode: text('barcode'),
+    servingLabel: text('serving_label').notNull().default('1 serving'),
+    servingQuantity: integer('serving_quantity').notNull().default(1),
+    calories: integer('calories').notNull(),
+    proteinGrams: integer('protein_grams').notNull(),
+    carbsGrams: integer('carbs_grams').notNull(),
+    fatGrams: integer('fat_grams').notNull(),
+    isPublic: boolean('is_public').notNull().default(false),
+    createdByUserId: text('created_by_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('food_catalog_name_idx').on(table.name),
+    index('food_catalog_user_idx').on(table.createdByUserId),
+    index('food_catalog_public_idx').on(table.isPublic),
+    index('food_catalog_barcode_idx').on(table.barcode),
+  ]
+);
+
+export const userNutritionGoals = pgTable('user_nutrition_goal', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  caloriesTarget: integer('calories_target').notNull(),
+  proteinTarget: integer('protein_target').notNull(),
+  carbsTarget: integer('carbs_target').notNull(),
+  fatTarget: integer('fat_target').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const foodLogs = pgTable(
+  'food_log',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    catalogFoodId: text('catalog_food_id').references(() => foodCatalog.id, {
+      onDelete: 'set null',
+    }),
+    foodName: text('food_name').notNull(),
+    mealType: text('meal_type').notNull(),
+    quantity: integer('quantity').notNull().default(1),
+    calories: integer('calories').notNull(),
+    proteinGrams: integer('protein_grams').notNull(),
+    carbsGrams: integer('carbs_grams').notNull(),
+    fatGrams: integer('fat_grams').notNull(),
+    notes: text('notes'),
+    logDate: text('log_date').notNull(),
+    loggedAt: timestamp('logged_at').defaultNow().notNull(),
+    lastEditedAt: timestamp('last_edited_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('food_log_user_date_idx').on(table.userId, table.logDate),
+    index('food_log_user_logged_at_idx').on(table.userId, table.loggedAt),
+    index('food_log_user_meal_type_idx').on(table.userId, table.mealType),
+  ]
+);
+
+export const mealTemplates = pgTable(
+  'meal_template',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    mealType: text('meal_type'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index('meal_template_user_idx').on(table.userId)]
+);
+
+export const mealTemplateItems = pgTable(
+  'meal_template_item',
+  {
+    id: text('id').primaryKey(),
+    templateId: text('template_id')
+      .notNull()
+      .references(() => mealTemplates.id, { onDelete: 'cascade' }),
+    catalogFoodId: text('catalog_food_id').references(() => foodCatalog.id, {
+      onDelete: 'set null',
+    }),
+    foodName: text('food_name').notNull(),
+    quantity: integer('quantity').notNull().default(1),
+    calories: integer('calories').notNull(),
+    proteinGrams: integer('protein_grams').notNull(),
+    carbsGrams: integer('carbs_grams').notNull(),
+    fatGrams: integer('fat_grams').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('meal_template_item_template_idx').on(table.templateId),
+    index('meal_template_item_food_idx').on(table.catalogFoodId),
+  ]
+);
+
+export const nutritionDailyXp = pgTable(
+  'nutrition_daily_xp',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    logDate: text('log_date').notNull(),
+    awardedXp: integer('awarded_xp').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('nutrition_daily_xp_user_date_unique').on(table.userId, table.logDate),
+    index('nutrition_daily_xp_user_idx').on(table.userId),
+  ]
+);
+
 export const planTemplateRelations = relations(planTemplates, ({ many }) => ({
   exercises: many(planTemplateExercises),
   plans: many(trainingPlans),
@@ -352,5 +496,58 @@ export const xpEventRelations = relations(xpEvents, ({ one }) => ({
   session: one(workoutSessions, {
     fields: [xpEvents.sessionId],
     references: [workoutSessions.id],
+  }),
+}));
+
+export const foodCatalogRelations = relations(foodCatalog, ({ one, many }) => ({
+  createdByUser: one(user, {
+    fields: [foodCatalog.createdByUserId],
+    references: [user.id],
+  }),
+  logs: many(foodLogs),
+  templateItems: many(mealTemplateItems),
+}));
+
+export const userNutritionGoalsRelations = relations(userNutritionGoals, ({ one }) => ({
+  user: one(user, {
+    fields: [userNutritionGoals.userId],
+    references: [user.id],
+  }),
+}));
+
+export const foodLogsRelations = relations(foodLogs, ({ one }) => ({
+  user: one(user, {
+    fields: [foodLogs.userId],
+    references: [user.id],
+  }),
+  catalogFood: one(foodCatalog, {
+    fields: [foodLogs.catalogFoodId],
+    references: [foodCatalog.id],
+  }),
+}));
+
+export const mealTemplatesRelations = relations(mealTemplates, ({ one, many }) => ({
+  user: one(user, {
+    fields: [mealTemplates.userId],
+    references: [user.id],
+  }),
+  items: many(mealTemplateItems),
+}));
+
+export const mealTemplateItemsRelations = relations(mealTemplateItems, ({ one }) => ({
+  template: one(mealTemplates, {
+    fields: [mealTemplateItems.templateId],
+    references: [mealTemplates.id],
+  }),
+  catalogFood: one(foodCatalog, {
+    fields: [mealTemplateItems.catalogFoodId],
+    references: [foodCatalog.id],
+  }),
+}));
+
+export const nutritionDailyXpRelations = relations(nutritionDailyXp, ({ one }) => ({
+  user: one(user, {
+    fields: [nutritionDailyXp.userId],
+    references: [user.id],
   }),
 }));

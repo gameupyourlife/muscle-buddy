@@ -5,6 +5,19 @@ export const WORKOUT_XP_CONFIG = {
   maxBuffMultiplier: 2,
 } as const;
 
+export const NUTRITION_XP_CONFIG = {
+  maxDailyXp: 10,
+  toleranceFraction: 0.1,
+  carbsFatOveragePenaltyStart: 0.1,
+} as const;
+
+export const NUTRITION_MEAL_TYPES = [
+  'breakfast',
+  'lunch',
+  'dinner',
+  'snack',
+] as const;
+
 export const LEVEL_THRESHOLDS = [
   0,
   200,

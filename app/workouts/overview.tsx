@@ -4,17 +4,15 @@ import { VirtualMuscleBuddy } from '@/components/workouts/virtual-muscle-buddy';
 import { LEVEL_THRESHOLDS } from '@/lib/workouts/constants';
 import { useWorkoutsData } from '@/lib/workouts/use-workouts';
 import { Stack, useRouter } from 'expo-router';
-import { BoltIcon, FlameIcon, TargetIcon } from 'lucide-react-native';
-import { ActivityIndicator, ScrollView, View, useWindowDimensions, TouchableOpacity } from 'react-native';
+import { BoltIcon, ChevronRightIcon, FlameIcon, SaladIcon, TargetIcon } from 'lucide-react-native';
+import { ActivityIndicator, ScrollView, View, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WorkoutOverviewScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   const {
-    apiBaseUrl,
     dashboard,
     activeSession,
     isLoading,
@@ -26,7 +24,6 @@ export default function WorkoutOverviewScreen() {
     loadInitialData,
   } = useWorkoutsData();
 
-  const isCompact = width < 390;
   const level = dashboard?.gamification?.level ?? 1;
   const totalXp = dashboard?.gamification?.totalXp ?? 0;
 
@@ -76,13 +73,36 @@ export default function WorkoutOverviewScreen() {
           xpToNextLevel={xpToNextLevel}
         />
 
+        <View className="rounded-3xl border border-border/60 bg-card p-4 gap-3">
+          <Text className="text-sm font-semibold text-foreground" selectable>
+            Start Here
+          </Text>
+          <Text className="text-xs text-muted-foreground leading-5" selectable>
+            1) Open Plans and set your routine. 2) Start a session in Tracker and log sets. 3) Add meals in Food to keep nutrition aligned.
+          </Text>
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={() => router.push('/workouts/plans')}
+              className="flex-1 rounded-xl border border-border/70 bg-black/20 px-3 py-2"
+            >
+              <Text className="text-xs font-medium text-foreground">Set up plan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/workouts/tracker')}
+              className="flex-1 rounded-xl border border-border/70 bg-black/20 px-3 py-2"
+            >
+              <Text className="text-xs font-medium text-foreground">Open tracker</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View className="flex-row gap-4">
           <TouchableOpacity 
             onPress={() => router.push('/workouts/tracker')}
             className="flex-1 bg-card rounded-2xl p-4 py-6 flex-col items-center justify-center gap-3 active:opacity-80">
             <Icon as={FlameIcon} size={28} className="text-foreground" />
             <Text className="font-semibold text-center text-foreground">
-              {activeSession ? 'Resume\nWorkout' : 'Start\nWorkout'}
+              {activeSession ? 'Resume workout' : 'Start workout'}
             </Text>
           </TouchableOpacity>
           
@@ -91,7 +111,7 @@ export default function WorkoutOverviewScreen() {
             className="flex-1 bg-card rounded-2xl p-4 py-6 flex-col items-center justify-center gap-3 active:opacity-80">
             <Icon as={TargetIcon} size={28} className="text-foreground" />
             <Text className="font-semibold text-center text-foreground">
-              View\nPlans
+              Edit plans
             </Text>
           </TouchableOpacity>
         </View>
@@ -103,11 +123,16 @@ export default function WorkoutOverviewScreen() {
         <View className="bg-card rounded-3xl overflow-hidden">
           <TouchableOpacity onPress={() => router.push('/workouts/plans')} className="flex-row items-center justify-between p-4 active:bg-secondary/50">
             <Text className="text-base text-foreground font-medium">Edit workout plan</Text>
+            <Icon as={ChevronRightIcon} size={18} className="text-muted-foreground" />
           </TouchableOpacity>
           <View className="h-[1px] bg-border/50 ml-4" />
           
           <TouchableOpacity onPress={() => router.push('/workouts/food-tracking')} className="flex-row items-center justify-between p-4 active:bg-secondary/50">
-            <Text className="text-base text-foreground font-medium">Log food</Text>
+            <View className="flex-row items-center gap-2">
+              <Icon as={SaladIcon} size={16} className="text-muted-foreground" />
+              <Text className="text-base text-foreground font-medium">Log food</Text>
+            </View>
+            <Icon as={ChevronRightIcon} size={18} className="text-muted-foreground" />
           </TouchableOpacity>
           <View className="h-[1px] bg-border/50 ml-4" />
           

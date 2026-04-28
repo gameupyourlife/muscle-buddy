@@ -3,15 +3,15 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type Option } from '@/components/ui/select';
+import { OptionChips } from '@/components/ui/option-chips';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import {
-  DAY_OPTIONS,
-  TRACKING_MODE_OPTIONS,
-  useWorkoutsData,
+    DAY_OPTIONS,
+    TRACKING_MODE_OPTIONS,
+    useWorkoutsData,
 } from '@/lib/workouts/use-workouts';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type PlanEntryInputs = Record<string, { reps: string; weight: string }>;
 
 export default function WorkoutTrackerScreen() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const {
@@ -61,15 +62,6 @@ export default function WorkoutTrackerScreen() {
   const isCompact = width < 420;
   const contentPaddingTop = Math.max(12, insets.top + 4);
   const contentPaddingBottom = Math.max(28, insets.bottom + 20);
-
-  const selectedWorkoutDayOption: Option =
-    DAY_OPTIONS.find((option) => option.value === selectedWorkoutDay) ?? undefined;
-
-  const selectedTrackingModeOption: Option =
-    TRACKING_MODE_OPTIONS.find((option) => option.value === trackingMode) ?? undefined;
-
-  const trackerExerciseOption: Option =
-    trackerExerciseOptions.find((option) => option.value === trackerExerciseId) ?? undefined;
 
   const canStartSession = !isPlanMode || !!activePlan;
 
@@ -143,6 +135,24 @@ export default function WorkoutTrackerScreen() {
         <Text className="ml-4 mb-2 text-[13px] font-semibold uppercase text-[#8e8e93]">
           Workout Session
         </Text>
+
+        <Card className="bg-[#1c1c1e] rounded-[28px] overflow-hidden border-0">
+          <View className="p-4 gap-3">
+            <Text className="text-white font-semibold">Tracker Flow</Text>
+            <Text className="text-xs text-muted-foreground" selectable>
+              1) Start session. 2) Log sets from plan or free mode. 3) Complete workout to sync XP and streak progress.
+            </Text>
+            <View className="gap-2" style={{ flexDirection: isCompact ? 'column' : 'row' }}>
+              <Button variant="outline" className="flex-1" onPress={() => router.push('/workouts/plans')}>
+                <Text>Edit plans</Text>
+              </Button>
+              <Button variant="outline" className="flex-1" onPress={() => router.push('/workouts/food-tracking')}>
+                <Text>Open food tracker</Text>
+              </Button>
+            </View>
+          </View>
+        </Card>
+
         <Card className="bg-[#1c1c1e] rounded-[28px] overflow-hidden border-0">
           <View className="flex-row items-center justify-between p-4 border-b border-[#38383a]">
             <Text className="text-white text-base">Status</Text>
@@ -153,37 +163,24 @@ export default function WorkoutTrackerScreen() {
           <View className="p-4 gap-4">
             <View className="gap-2">
               <Label className="text-white" nativeID="tracking-mode">Training mode</Label>
-              <Select
-                value={selectedTrackingModeOption}
-                onValueChange={(option) => setTrackingMode((option?.value as 'free' | 'plan') ?? 'free')}
-              >
-                <SelectTrigger aria-labelledby="tracking-mode">
-                  <SelectValue placeholder="Choose training mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRACKING_MODE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} label={option.label} />
-                  ))}
-                </SelectContent>
-              </Select>
+              <OptionChips
+                layout="wrap"
+                items={TRACKING_MODE_OPTIONS}
+                value={trackingMode}
+                onValueChange={(value) => setTrackingMode((value as 'free' | 'plan') ?? 'free')}
+              />
             </View>
 
             {isPlanMode ? (
               <View className="gap-2">
                 <Label nativeID="workout-day">Workout day</Label>
-                <Select
-                  value={selectedWorkoutDayOption}
-                  onValueChange={(option) => setSelectedWorkoutDay(option?.value ?? selectedWorkoutDay)}
-                >
-                  <SelectTrigger aria-labelledby="workout-day">
-                    <SelectValue placeholder="Choose day" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAY_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value} label={option.label} />
-                    ))}
-                  </SelectContent>
-                </Select>
+                <OptionChips
+                  layout="scroll"
+                  size="sm"
+                  items={DAY_OPTIONS}
+                  value={selectedWorkoutDay}
+                  onValueChange={setSelectedWorkoutDay}
+                />
                 <Text className="text-xs text-muted-foreground" selectable>
                   Plan day selected: {selectedWorkoutDayLabel}. Suggested next exercise: {suggestedTrackerExerciseLabel}
                 </Text>
@@ -195,6 +192,13 @@ export default function WorkoutTrackerScreen() {
                 <Text className="text-destructive" selectable>
                   No active plan selected. Choose a plan in the Plans tab first.
                 </Text>
+                <Button
+                  className="mt-3"
+                  variant="outline"
+                  onPress={() => router.push('/workouts/plans')}
+                >
+                  <Text>Go to plans</Text>
+                </Button>
               </View>
             ) : null}
 
@@ -303,19 +307,13 @@ export default function WorkoutTrackerScreen() {
               <>
                 <View className="gap-2">
                   <Label nativeID="exercise-id">Machine or exercise</Label>
-                  <Select
-                    value={trackerExerciseOption}
-                    onValueChange={(option) => setTrackerExerciseId(option?.value ?? '')}
-                  >
-                    <SelectTrigger aria-labelledby="exercise-id">
-                      <SelectValue placeholder="Pick exercise" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {trackerExerciseOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value} label={option.label} />
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <OptionChips
+                    layout="scroll"
+                    size="sm"
+                    items={trackerExerciseOptions}
+                    value={trackerExerciseId}
+                    onValueChange={setTrackerExerciseId}
+                  />
                   <Text className="text-xs text-muted-foreground" selectable>
                     Selected: {selectedTrackerExerciseLabel}
                   </Text>

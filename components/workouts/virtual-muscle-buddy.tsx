@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Text } from '@/components/ui/text';
 import { SparklesIcon } from 'lucide-react-native';
 import { useEffect, useMemo, useRef } from 'react';
-import { Animated, View } from 'react-native';
+import { Animated, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from 'react-native-svg';
 
 type BuddyStage = {
@@ -75,9 +75,10 @@ function getStageIndex(level: number) {
   return 4;
 }
 
-function BuddyIllustration({ level }: { level: number }) {
+function BuddyIllustration({ level, width }: { level: number; width: number }) {
   const stageIndex = getStageIndex(level);
   const muscleScale = clamp(0.82 + level * 0.022, 0.82, 1.35);
+  const illustrationHeight = Math.round((width / 220) * 240);
   const shoulderRx = 16 * muscleScale;
   const torsoWidth = 32 * muscleScale;
   const armRadius = 8 * muscleScale;
@@ -88,7 +89,7 @@ function BuddyIllustration({ level }: { level: number }) {
   const eyeOffset = stageIndex >= 3 ? 0 : 1;
 
   return (
-    <Svg width={220} height={240} viewBox="0 0 220 240" fill="none">
+    <Svg width={width} height={illustrationHeight} viewBox="0 0 220 240" fill="none">
       <Ellipse cx={110} cy={218} rx={56} ry={12} fill="hsl(214 24% 82%)" opacity={0.65} />
 
       <Circle cx={110} cy={48} r={24} fill="hsl(34 80% 74%)" />
@@ -159,8 +160,10 @@ export function VirtualMuscleBuddy({
   progressToNextLevel,
   xpToNextLevel,
 }: VirtualMuscleBuddyProps) {
+  const { width } = useWindowDimensions();
   const stage = STAGES[getStageIndex(level)];
   const idleLift = useRef(new Animated.Value(0)).current;
+  const illustrationWidth = Math.min(220, Math.max(160, width - 170));
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -203,7 +206,7 @@ export function VirtualMuscleBuddy({
       <CardContent className="gap-4 pb-6">
         <View className="items-center justify-center rounded-2xl border border-border/70 bg-muted/45 py-4">
           <Animated.View style={{ transform: [{ translateY: idleLift }] }}>
-            <BuddyIllustration level={level} />
+            <BuddyIllustration level={level} width={illustrationWidth} />
           </Animated.View>
         </View>
 
