@@ -1,6 +1,6 @@
 import { Icon } from '@/components/ui/icon';
 import { Tabs } from 'expo-router';
-import { ClipboardListIcon, DumbbellIcon, HouseIcon, SaladIcon, Settings2Icon } from 'lucide-react-native';
+import { ClipboardListIcon, DumbbellIcon, HouseIcon, SaladIcon, Settings2Icon, UsersIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WorkoutsLayout() {
@@ -69,6 +69,14 @@ export default function WorkoutsLayout() {
           title: 'Food Tracking',
           tabBarLabel: 'Food',
           tabBarIcon: ({ color, size }) => <Icon as={SaladIcon} color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="social"
+        options={{
+          title: 'Social',
+          tabBarLabel: 'Buddy',
+          tabBarIcon: ({ color, size }) => <Icon as={UsersIcon} color={color} size={size} />,
         }}
       />
       <Tabs.Screen

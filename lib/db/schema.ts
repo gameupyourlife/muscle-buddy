@@ -2,13 +2,13 @@ export * from './auth-schema';
 
 import { relations } from 'drizzle-orm';
 import {
-    boolean,
-    index,
-    integer,
-    pgTable,
-    text,
-    timestamp,
-    uniqueIndex,
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth-schema';
 
@@ -400,6 +400,254 @@ export const nutritionDailyXp = pgTable(
   ]
 );
 
+export const socialProfiles = pgTable(
+  'social_profile',
+  {
+    userId: text('user_id')
+      .primaryKey()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    displayName: text('display_name').notNull(),
+    experienceLevel: text('experience_level').notNull().default('beginner'),
+    trainingGoals: text('training_goals').notNull().default(''),
+    preferredDays: text('preferred_days').notNull().default(''),
+    preferredTimeWindows: text('preferred_time_windows').notNull().default(''),
+    genderPreference: text('gender_preference').notNull().default('any'),
+    gymDistrict: text('gym_district').notNull(),
+    city: text('city').notNull(),
+    language: text('language').notNull().default('en'),
+    bio: text('bio'),
+    isDiscoverable: boolean('is_discoverable').notNull().default(true),
+    isPrivateProfile: boolean('is_private_profile').notNull().default(false),
+    searchRadiusKm: integer('search_radius_km').notNull().default(10),
+    areaLatE5: integer('area_lat_e5'),
+    areaLngE5: integer('area_lng_e5'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('social_profile_discoverable_idx').on(table.isDiscoverable),
+    index('social_profile_location_idx').on(table.city, table.gymDistrict),
+    index('social_profile_radius_idx').on(table.searchRadiusKm),
+  ]
+);
+
+export const buddyRequests = pgTable(
+  'buddy_request',
+  {
+    id: text('id').primaryKey(),
+    fromUserId: text('from_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    toUserId: text('to_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    status: text('status').notNull().default('pending'),
+    message: text('message'),
+    respondedAt: timestamp('responded_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('buddy_request_pair_unique').on(table.fromUserId, table.toUserId),
+    index('buddy_request_to_status_idx').on(table.toUserId, table.status),
+    index('buddy_request_from_status_idx').on(table.fromUserId, table.status),
+  ]
+);
+
+export const buddies = pgTable(
+  'buddy',
+  {
+    id: text('id').primaryKey(),
+    userAId: text('user_a_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    userBId: text('user_b_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    connectedAt: timestamp('connected_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('buddy_pair_unique').on(table.userAId, table.userBId),
+    index('buddy_user_a_idx').on(table.userAId),
+    index('buddy_user_b_idx').on(table.userBId),
+  ]
+);
+
+export const socialMessages = pgTable(
+  'social_message',
+  {
+    id: text('id').primaryKey(),
+    buddyId: text('buddy_id')
+      .notNull()
+      .references(() => buddies.id, { onDelete: 'cascade' }),
+    senderUserId: text('sender_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    readAt: timestamp('read_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('social_message_buddy_created_idx').on(table.buddyId, table.createdAt),
+    index('social_message_sender_idx').on(table.senderUserId),
+  ]
+);
+
+export const socialRecurringAvailability = pgTable(
+  'social_recurring_availability',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    dayOfWeek: integer('day_of_week').notNull(),
+    startMinute: integer('start_minute').notNull(),
+    endMinute: integer('end_minute').notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('social_recurring_availability_unique_slot').on(
+      table.userId,
+      table.dayOfWeek,
+      table.startMinute,
+      table.endMinute
+    ),
+    index('social_recurring_availability_user_idx').on(table.userId, table.dayOfWeek),
+  ]
+);
+
+export const socialOneOffAvailability = pgTable(
+  'social_one_off_availability',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    startsAt: timestamp('starts_at').notNull(),
+    endsAt: timestamp('ends_at').notNull(),
+    status: text('status').notNull().default('available'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('social_one_off_availability_user_starts_idx').on(table.userId, table.startsAt),
+    index('social_one_off_availability_user_status_idx').on(table.userId, table.status),
+  ]
+);
+
+export const socialMeetupInvites = pgTable(
+  'social_meetup_invite',
+  {
+    id: text('id').primaryKey(),
+    senderUserId: text('sender_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    receiverUserId: text('receiver_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    startsAt: timestamp('starts_at').notNull(),
+    endsAt: timestamp('ends_at').notNull(),
+    gymArea: text('gym_area').notNull(),
+    note: text('note'),
+    status: text('status').notNull().default('pending'),
+    respondedAt: timestamp('responded_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('social_meetup_invite_receiver_status_idx').on(table.receiverUserId, table.status),
+    index('social_meetup_invite_sender_status_idx').on(table.senderUserId, table.status),
+  ]
+);
+
+export const socialNotifications = pgTable(
+  'social_notification',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    data: text('data'),
+    status: text('status').notNull().default('unread'),
+    readAt: timestamp('read_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('social_notification_user_status_idx').on(table.userId, table.status),
+    index('social_notification_user_created_idx').on(table.userId, table.createdAt),
+  ]
+);
+
+export const socialBlocks = pgTable(
+  'social_block',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    blockedUserId: text('blocked_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    reason: text('reason'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('social_block_pair_unique').on(table.userId, table.blockedUserId),
+    index('social_block_user_idx').on(table.userId),
+    index('social_block_blocked_user_idx').on(table.blockedUserId),
+  ]
+);
+
+export const socialReports = pgTable(
+  'social_report',
+  {
+    id: text('id').primaryKey(),
+    reporterUserId: text('reporter_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    reportedUserId: text('reported_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    category: text('category').notNull(),
+    details: text('details'),
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('social_report_reported_status_idx').on(table.reportedUserId, table.status),
+    index('social_report_reporter_idx').on(table.reporterUserId),
+  ]
+);
+
 export const planTemplateRelations = relations(planTemplates, ({ many }) => ({
   exercises: many(planTemplateExercises),
   plans: many(trainingPlans),
@@ -548,6 +796,107 @@ export const mealTemplateItemsRelations = relations(mealTemplateItems, ({ one })
 export const nutritionDailyXpRelations = relations(nutritionDailyXp, ({ one }) => ({
   user: one(user, {
     fields: [nutritionDailyXp.userId],
+    references: [user.id],
+  }),
+}));
+
+export const socialProfileRelations = relations(socialProfiles, ({ one, many }) => ({
+  user: one(user, {
+    fields: [socialProfiles.userId],
+    references: [user.id],
+  }),
+  recurringAvailability: many(socialRecurringAvailability),
+  oneOffAvailability: many(socialOneOffAvailability),
+  notifications: many(socialNotifications),
+}));
+
+export const buddyRequestRelations = relations(buddyRequests, ({ one }) => ({
+  fromUser: one(user, {
+    fields: [buddyRequests.fromUserId],
+    references: [user.id],
+  }),
+  toUser: one(user, {
+    fields: [buddyRequests.toUserId],
+    references: [user.id],
+  }),
+}));
+
+export const buddyRelations = relations(buddies, ({ one, many }) => ({
+  userA: one(user, {
+    fields: [buddies.userAId],
+    references: [user.id],
+  }),
+  userB: one(user, {
+    fields: [buddies.userBId],
+    references: [user.id],
+  }),
+  messages: many(socialMessages),
+}));
+
+export const socialMessageRelations = relations(socialMessages, ({ one }) => ({
+  buddy: one(buddies, {
+    fields: [socialMessages.buddyId],
+    references: [buddies.id],
+  }),
+  senderUser: one(user, {
+    fields: [socialMessages.senderUserId],
+    references: [user.id],
+  }),
+}));
+
+export const socialRecurringAvailabilityRelations = relations(
+  socialRecurringAvailability,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [socialRecurringAvailability.userId],
+      references: [user.id],
+    }),
+  })
+);
+
+export const socialOneOffAvailabilityRelations = relations(socialOneOffAvailability, ({ one }) => ({
+  user: one(user, {
+    fields: [socialOneOffAvailability.userId],
+    references: [user.id],
+  }),
+}));
+
+export const socialMeetupInviteRelations = relations(socialMeetupInvites, ({ one }) => ({
+  senderUser: one(user, {
+    fields: [socialMeetupInvites.senderUserId],
+    references: [user.id],
+  }),
+  receiverUser: one(user, {
+    fields: [socialMeetupInvites.receiverUserId],
+    references: [user.id],
+  }),
+}));
+
+export const socialNotificationRelations = relations(socialNotifications, ({ one }) => ({
+  user: one(user, {
+    fields: [socialNotifications.userId],
+    references: [user.id],
+  }),
+}));
+
+export const socialBlockRelations = relations(socialBlocks, ({ one }) => ({
+  user: one(user, {
+    fields: [socialBlocks.userId],
+    references: [user.id],
+  }),
+  blockedUser: one(user, {
+    fields: [socialBlocks.blockedUserId],
+    references: [user.id],
+  }),
+}));
+
+export const socialReportRelations = relations(socialReports, ({ one }) => ({
+  reporterUser: one(user, {
+    fields: [socialReports.reporterUserId],
+    references: [user.id],
+  }),
+  reportedUser: one(user, {
+    fields: [socialReports.reportedUserId],
     references: [user.id],
   }),
 }));
