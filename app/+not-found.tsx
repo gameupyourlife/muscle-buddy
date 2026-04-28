@@ -1,18 +1,19 @@
 import { Link, Stack } from 'expo-router';
-import { View } from 'react-native';
+import { Screen, Surface } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 
 export default function NotFoundScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Oops!' }} />
-      <View>
-        <Text>This screen doesn't exist.</Text>
-
-        <Link href="/">
-          <Text>Go to home screen!</Text>
-        </Link>
-      </View>
+      <Screen contentContainerStyle={{ justifyContent: 'center', flexGrow: 1 }}>
+        <Surface>
+          <Text className="text-[18px] font-semibold">This screen does not exist.</Text>
+          <Link href="/" asChild>
+            <Text className="text-[15px] font-medium text-primary">Go to home screen</Text>
+          </Link>
+        </Surface>
+      </Screen>
     </>
   );
 }

@@ -10,76 +10,55 @@ import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 
 export {
-    // Catch any errors thrown by the Layout component.
-    ErrorBoundary,
+  // Catch any errors thrown by the Layout component.
+  ErrorBoundary,
 } from 'expo-router';
 
 export default function RootLayout() {
-    const { colorScheme } = useColorScheme();
+  const { colorScheme } = useColorScheme();
 
-    return (
-        <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
-            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-            <Routes />
-            <PortalHost />
-        </ThemeProvider>
-    );
+  return (
+    <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <Routes />
+      <PortalHost />
+    </ThemeProvider>
+  );
 }
 
 SplashScreen.preventAutoHideAsync();
 
+const HIDDEN = { headerShown: false } as const;
+
 function Routes() {
-    const { data: session, isPending } = authClient.useSession();
-    const isSignedIn = !!session?.user;
+  const { data: session, isPending } = authClient.useSession();
+  const isSignedIn = !!session?.user;
 
-    React.useEffect(() => {
-        if (!isPending) {
-            SplashScreen.hideAsync();
-        }
-    }, [isPending]);
-
-    if (isPending) {
-        return null;
+  React.useEffect(() => {
+    if (!isPending) {
+      SplashScreen.hideAsync();
     }
+  }, [isPending]);
 
-    return (
-        <Stack>
-            {/* Screens only shown when the user is NOT signed in */}
-            <Stack.Protected guard={!isSignedIn}>
-                <Stack.Screen name="(auth)/sign-in" options={SIGN_IN_SCREEN_OPTIONS} />
-                <Stack.Screen name="(auth)/sign-up" options={SIGN_UP_SCREEN_OPTIONS} />
-                <Stack.Screen name="(auth)/reset-password" options={DEFAULT_AUTH_SCREEN_OPTIONS} />
-                <Stack.Screen name="(auth)/forgot-password" options={DEFAULT_AUTH_SCREEN_OPTIONS} />
-            </Stack.Protected>
+  if (isPending) {
+    return null;
+  }
 
-            {/* Screens only shown when the user IS signed in */}
-            <Stack.Protected guard={isSignedIn}>
-                <Stack.Screen name="index" options={INDEX_SCREEN_OPTIONS} />
-                <Stack.Screen name="workouts" options={WORKOUTS_SCREEN_OPTIONS} />
-            </Stack.Protected>
+  return (
+    <Stack screenOptions={HIDDEN}>
+      {/* Public auth flow */}
+      <Stack.Protected guard={!isSignedIn}>
+        <Stack.Screen name="(auth)/sign-in" options={HIDDEN} />
+        <Stack.Screen name="(auth)/sign-up" options={HIDDEN} />
+        <Stack.Screen name="(auth)/forgot-password" options={HIDDEN} />
+        <Stack.Screen name="(auth)/reset-password" options={HIDDEN} />
+      </Stack.Protected>
 
-            {/* Screens outside the guards are accessible to everyone (e.g. not found) */}
-        </Stack>
-    );
+      {/* Authenticated app */}
+      <Stack.Protected guard={isSignedIn}>
+        <Stack.Screen name="index" options={HIDDEN} />
+        <Stack.Screen name="(tabs)" options={HIDDEN} />
+      </Stack.Protected>
+    </Stack>
+  );
 }
-
-const SIGN_IN_SCREEN_OPTIONS = {
-    headerShown: false,
-    title: 'Sign in',
-};
-
-const SIGN_UP_SCREEN_OPTIONS = {
-    headerShown: false,
-} as const;
-
-const DEFAULT_AUTH_SCREEN_OPTIONS = {
-    headerShown: false,
-};
-
-const INDEX_SCREEN_OPTIONS = {
-    headerShown: false,
-};
-
-const WORKOUTS_SCREEN_OPTIONS = {
-    headerShown: false,
-};
