@@ -26,7 +26,6 @@ export async function PUT(request: Request) {
 
   try {
     const body = (await request.json()) as {
-      displayName?: string;
       experienceLevel?: string;
       trainingGoals?: string[];
       preferredDays?: string[];
@@ -43,10 +42,6 @@ export async function PUT(request: Request) {
       areaLngE5?: number | null;
     };
 
-    if (!body.displayName?.trim()) {
-      return Response.json({ error: 'displayName is required.' }, { status: 400 });
-    }
-
     if (!body.gymDistrict?.trim()) {
       return Response.json({ error: 'gymDistrict is required.' }, { status: 400 });
     }
@@ -60,7 +55,6 @@ export async function PUT(request: Request) {
     }
 
     const profile = await upsertSocialProfile(user.id, {
-      displayName: body.displayName,
       experienceLevel: body.experienceLevel ?? 'beginner',
       trainingGoals: Array.isArray(body.trainingGoals) ? body.trainingGoals : [],
       preferredDays: Array.isArray(body.preferredDays) ? body.preferredDays : [],

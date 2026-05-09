@@ -27,6 +27,7 @@ type ScreenProps = Omit<ScrollViewProps, 'refreshControl'> & {
   gap?: number;
   bottomGap?: number;
   scroll?: boolean;
+  scrollRef?: React.RefObject<ScrollView | null>;
 };
 
 function Screen({
@@ -37,6 +38,7 @@ function Screen({
   gap = 16,
   bottomGap = 32,
   scroll = true,
+  scrollRef,
   contentContainerStyle,
   className,
   ...rest
@@ -51,6 +53,7 @@ function Screen({
     >
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           className={cn('flex-1 bg-background', className)}
           contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"

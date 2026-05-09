@@ -1,18 +1,40 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, integer } from "drizzle-orm/pg-core";
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").default(false).notNull(),
+    image: text("image"),
+    socialExperienceLevel: text("social_experience_level").default("beginner").notNull(),
+    socialTrainingGoals: text("social_training_goals").default("").notNull(),
+    socialPreferredDays: text("social_preferred_days").default("").notNull(),
+    socialPreferredTimeWindows: text("social_preferred_time_windows").default("").notNull(),
+    socialGenderPreference: text("social_gender_preference").default("any").notNull(),
+    socialGymDistrict: text("social_gym_district").default("").notNull(),
+    socialCity: text("social_city").default("").notNull(),
+    socialLanguage: text("social_language").default("en").notNull(),
+    socialBio: text("social_bio"),
+    socialIsDiscoverable: boolean("social_is_discoverable").default(true).notNull(),
+    socialIsPrivateProfile: boolean("social_is_private_profile").default(false).notNull(),
+    socialSearchRadiusKm: integer("social_search_radius_km").default(10).notNull(),
+    socialAreaLatE5: integer("social_area_lat_e5"),
+    socialAreaLngE5: integer("social_area_lng_e5"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("user_social_discoverable_idx").on(table.socialIsDiscoverable),
+    index("user_social_location_idx").on(table.socialCity, table.socialGymDistrict),
+    index("user_social_radius_idx").on(table.socialSearchRadiusKm),
+  ],
+);
 
 export const session = pgTable(
   "session",

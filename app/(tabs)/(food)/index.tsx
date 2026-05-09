@@ -64,6 +64,7 @@ export default function FoodScreen() {
     feedback,
     errorMessage,
     loadData,
+    refreshNow,
     updateDate,
     saveGoals,
     addFoodLog,
@@ -142,7 +143,7 @@ export default function FoodScreen() {
   };
 
   return (
-    <Screen refreshing={isLoading} onRefresh={() => loadData()} contentContainerStyle={{ paddingTop: 8 }}>
+    <Screen refreshing={isLoading} onRefresh={refreshNow} contentContainerStyle={{ paddingTop: 8 }}>
       {/* Date nav */}
       <Surface>
         <View className="flex-row items-center justify-between gap-2">

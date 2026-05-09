@@ -1,0 +1,1 @@
+ALTER TABLE "social_profile" DROP COLUMN "display_name";

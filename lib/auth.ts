@@ -39,6 +39,89 @@ export const auth = betterAuth({
         ] : [])
     ],
     user: {
+        additionalFields: {
+            socialExperienceLevel: {
+                type: 'string',
+                required: false,
+                defaultValue: 'beginner',
+                input: false,
+            },
+            socialTrainingGoals: {
+                type: 'string',
+                required: false,
+                defaultValue: '',
+                input: false,
+            },
+            socialPreferredDays: {
+                type: 'string',
+                required: false,
+                defaultValue: '',
+                input: false,
+            },
+            socialPreferredTimeWindows: {
+                type: 'string',
+                required: false,
+                defaultValue: '',
+                input: false,
+            },
+            socialGenderPreference: {
+                type: 'string',
+                required: false,
+                defaultValue: 'any',
+                input: false,
+            },
+            socialGymDistrict: {
+                type: 'string',
+                required: false,
+                defaultValue: '',
+                input: false,
+            },
+            socialCity: {
+                type: 'string',
+                required: false,
+                defaultValue: '',
+                input: false,
+            },
+            socialLanguage: {
+                type: 'string',
+                required: false,
+                defaultValue: 'en',
+                input: false,
+            },
+            socialBio: {
+                type: 'string',
+                required: false,
+                input: false,
+            },
+            socialIsDiscoverable: {
+                type: 'boolean',
+                required: false,
+                defaultValue: true,
+                input: false,
+            },
+            socialIsPrivateProfile: {
+                type: 'boolean',
+                required: false,
+                defaultValue: false,
+                input: false,
+            },
+            socialSearchRadiusKm: {
+                type: 'number',
+                required: false,
+                defaultValue: 10,
+                input: false,
+            },
+            socialAreaLatE5: {
+                type: 'number',
+                required: false,
+                input: false,
+            },
+            socialAreaLngE5: {
+                type: 'number',
+                required: false,
+                input: false,
+            },
+        },
         changeEmail: {
             enabled: true,
             sendChangeEmailConfirmation: async ({ user, newEmail, url, token }, request) => {

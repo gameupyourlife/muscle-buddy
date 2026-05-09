@@ -2,7 +2,8 @@ import { getApiBaseUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import { STARTER_EXERCISES } from '@/lib/workouts/starter-data';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { InteractionManager } from 'react-native';
 
 export type Exercise = {
   id: string;
@@ -118,6 +119,46 @@ export const TRACKING_MODE_OPTIONS: Array<{ value: TrackingMode; label: string }
 
 const DEFAULT_REPS = '8';
 const DEFAULT_WEIGHT = '60';
+const FOCUS_REFRESH_COOLDOWN_MS = 45_000;
+
+type WorkoutsCacheSnapshot = {
+  dashboard: DashboardResponse | null;
+  templates: Template[];
+  plans: TrainingPlan[];
+  exercises: Exercise[];
+  recentSessions: Session[];
+  activeSession: Session | null;
+  cachedAt: number;
+};
+
+type LoadWorkoutsOptions = {
+  force?: boolean;
+  silent?: boolean;
+};
+
+type PreloadWorkoutsOptions = {
+  force?: boolean;
+};
+
+let workoutsCache: WorkoutsCacheSnapshot | null = null;
+let workoutsLoadPromise: Promise<void> | null = null;
+
+function updateWorkoutsCache(
+  patch: Partial<Omit<WorkoutsCacheSnapshot, 'cachedAt'>>
+) {
+  const nextCache: WorkoutsCacheSnapshot = {
+    dashboard: patch.dashboard ?? workoutsCache?.dashboard ?? null,
+    templates: patch.templates ?? workoutsCache?.templates ?? [],
+    plans: patch.plans ?? workoutsCache?.plans ?? [],
+    exercises: patch.exercises ?? workoutsCache?.exercises ?? [],
+    recentSessions: patch.recentSessions ?? workoutsCache?.recentSessions ?? [],
+    activeSession: patch.activeSession ?? workoutsCache?.activeSession ?? null,
+    cachedAt: Date.now(),
+  };
+
+  workoutsCache = nextCache;
+  return nextCache.cachedAt;
+}
 
 const createLocalId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -138,6 +179,118 @@ function getTodayWorkoutDayValue() {
   return String(jsDay === 0 ? 7 : jsDay);
 }
 
+export async function preloadWorkoutsData(options: PreloadWorkoutsOptions = {}) {
+  const { force = false } = options;
+
+  if (!force && workoutsLoadPromise) {
+    await workoutsLoadPromise;
+    return;
+  }
+
+  if (
+    !force &&
+    workoutsCache &&
+    Date.now() - workoutsCache.cachedAt < FOCUS_REFRESH_COOLDOWN_MS
+  ) {
+    return;
+  }
+
+  const apiBaseUrl = getApiBaseUrl();
+
+  if (!apiBaseUrl) {
+    throw new Error('No API base URL available. Set EXPO_PUBLIC_API_BASE_URL for native builds.');
+  }
+
+  const shouldAddNgrokHeader = apiBaseUrl.includes('ngrok');
+
+  const apiCall = async <T,>(path: string, init?: RequestInit): Promise<T> => {
+    const cookies = authClient.getCookie();
+    const headers = new Headers(init?.headers);
+
+    headers.set('Content-Type', 'application/json');
+
+    if (shouldAddNgrokHeader) {
+      headers.set('ngrok-skip-browser-warning', 'true');
+    }
+
+    if (cookies) {
+      headers.set('Cookie', cookies);
+    }
+
+    const response = await fetch(`${apiBaseUrl}${path}`, {
+      ...init,
+      headers,
+      credentials: 'omit',
+    });
+
+    const body = (await response.json().catch(() => null)) as T & { error?: string } | null;
+
+    if (!response.ok) {
+      throw new Error(body?.error || `Request failed with status ${response.status}.`);
+    }
+
+    if (!body) {
+      throw new Error('Unexpected empty response body.');
+    }
+
+    return body;
+  };
+
+  const fallbackExercises = STARTER_EXERCISES.map((exercise) => ({
+    id: exercise.id,
+    name: exercise.name,
+    muscleGroup: exercise.muscleGroup,
+    equipment: exercise.equipment,
+    isStarter: true,
+  }));
+
+  const loadPromise = (async () => {
+    const [dashboardResult, templatesResult, plansResult, sessionsResult, exercisesResult] = await Promise.allSettled([
+      apiCall<DashboardResponse>(
+        `/api/workouts/dashboard?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
+      ),
+      apiCall<{ templates: Template[] }>('/api/workouts/templates'),
+      apiCall<{ plans: TrainingPlan[] }>('/api/workouts/plans'),
+      apiCall<{ sessions: Session[] }>('/api/workouts/sessions'),
+      apiCall<{ exercises: Exercise[] }>('/api/workouts/exercises'),
+    ]);
+
+    const nextDashboard =
+      dashboardResult.status === 'fulfilled' ? dashboardResult.value : workoutsCache?.dashboard ?? null;
+    const nextTemplates =
+      templatesResult.status === 'fulfilled' ? templatesResult.value.templates : workoutsCache?.templates ?? [];
+    const nextPlans = plansResult.status === 'fulfilled' ? plansResult.value.plans : workoutsCache?.plans ?? [];
+    const nextSessions =
+      sessionsResult.status === 'fulfilled' ? sessionsResult.value.sessions : workoutsCache?.recentSessions ?? [];
+    const nextActiveSession = nextSessions.find((session) => session.status === 'in_progress') ?? null;
+    const nextExercises =
+      exercisesResult.status === 'fulfilled' && exercisesResult.value.exercises.length > 0
+        ? exercisesResult.value.exercises
+        : workoutsCache?.exercises && workoutsCache.exercises.length > 0
+          ? workoutsCache.exercises
+          : fallbackExercises;
+
+    updateWorkoutsCache({
+      dashboard: nextDashboard,
+      templates: nextTemplates,
+      plans: nextPlans,
+      recentSessions: nextSessions,
+      activeSession: nextActiveSession,
+      exercises: nextExercises,
+    });
+  })();
+
+  workoutsLoadPromise = loadPromise;
+
+  try {
+    await loadPromise;
+  } finally {
+    if (workoutsLoadPromise === loadPromise) {
+      workoutsLoadPromise = null;
+    }
+  }
+}
+
 export function useWorkoutsData() {
   const fallbackExercises = useMemo<Exercise[]>(
     () =>
@@ -153,12 +306,18 @@ export function useWorkoutsData() {
 
   const fallbackExerciseId = fallbackExercises[0]?.id ?? '';
 
-  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [plans, setPlans] = useState<TrainingPlan[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>(fallbackExercises);
-  const [recentSessions, setRecentSessions] = useState<Session[]>([]);
-  const [activeSession, setActiveSession] = useState<Session | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(workoutsCache?.dashboard ?? null);
+  const [templates, setTemplates] = useState<Template[]>(workoutsCache?.templates ?? []);
+  const [plans, setPlans] = useState<TrainingPlan[]>(workoutsCache?.plans ?? []);
+  const [exercises, setExercises] = useState<Exercise[]>(() => {
+    if (workoutsCache?.exercises && workoutsCache.exercises.length > 0) {
+      return workoutsCache.exercises;
+    }
+
+    return fallbackExercises;
+  });
+  const [recentSessions, setRecentSessions] = useState<Session[]>(workoutsCache?.recentSessions ?? []);
+  const [activeSession, setActiveSession] = useState<Session | null>(workoutsCache?.activeSession ?? null);
 
   const [selectedWorkoutDay, setSelectedWorkoutDay] = useState(getTodayWorkoutDayValue);
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('free');
@@ -176,7 +335,7 @@ export function useWorkoutsData() {
   const [planEditorExerciseId, setPlanEditorExerciseId] = useState(fallbackExerciseId);
   const [planEditorExercises, setPlanEditorExercises] = useState<PlanExerciseDraft[]>([]);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!workoutsCache);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [isAddingSet, setIsAddingSet] = useState(false);
   const [isCompletingSession, setIsCompletingSession] = useState(false);
@@ -185,6 +344,9 @@ export function useWorkoutsData() {
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const hasLoadedOnceRef = useRef(Boolean(workoutsCache));
+  const lastSyncAtRef = useRef(workoutsCache?.cachedAt ?? 0);
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
@@ -235,81 +397,158 @@ export function useWorkoutsData() {
       `/api/workouts/dashboard?timeZone=${encodeURIComponent(localeTimeZone)}`
     );
     setDashboard(dashboardData);
+    lastSyncAtRef.current = updateWorkoutsCache({ dashboard: dashboardData });
+    hasLoadedOnceRef.current = true;
   }, [apiCall]);
 
   const refreshSessions = useCallback(async () => {
     const sessionsResponse = await apiCall<{ sessions: Session[] }>('/api/workouts/sessions');
+    const active = sessionsResponse.sessions.find((session) => session.status === 'in_progress') ?? null;
     setRecentSessions(sessionsResponse.sessions);
-    setActiveSession(
-      sessionsResponse.sessions.find((session) => session.status === 'in_progress') ?? null
-    );
+    setActiveSession(active);
+    lastSyncAtRef.current = updateWorkoutsCache({
+      recentSessions: sessionsResponse.sessions,
+      activeSession: active,
+    });
+    hasLoadedOnceRef.current = true;
   }, [apiCall]);
 
-  const loadInitialData = useCallback(async () => {
-    setIsLoading(true);
-    setFeedback(null);
+  const loadInitialData = useCallback(async (options: LoadWorkoutsOptions = {}) => {
+    const { force = false, silent = false } = options;
+    const shouldShowSpinner = !silent || !hasLoadedOnceRef.current;
+
+    if (!force && workoutsLoadPromise) {
+      await workoutsLoadPromise;
+      return;
+    }
+
+    if (
+      !force &&
+      hasLoadedOnceRef.current &&
+      Date.now() - lastSyncAtRef.current < FOCUS_REFRESH_COOLDOWN_MS
+    ) {
+      return;
+    }
+
+    if (shouldShowSpinner) {
+      setIsLoading(true);
+    }
+
+    if (!silent) {
+      setFeedback(null);
+    }
     setErrorMessage(null);
 
+    const loadPromise = (async () => {
+      try {
+        const [dashboardResult, templatesResult, plansResult, sessionsResult, exercisesResult] = await Promise.allSettled([
+          apiCall<DashboardResponse>(
+            `/api/workouts/dashboard?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
+          ),
+          apiCall<{ templates: Template[] }>('/api/workouts/templates'),
+          apiCall<{ plans: TrainingPlan[] }>('/api/workouts/plans'),
+          apiCall<{ sessions: Session[] }>('/api/workouts/sessions'),
+          apiCall<{ exercises: Exercise[] }>('/api/workouts/exercises'),
+        ]);
+
+        const nextDashboard =
+          dashboardResult.status === 'fulfilled' ? dashboardResult.value : workoutsCache?.dashboard ?? null;
+        const nextTemplates =
+          templatesResult.status === 'fulfilled' ? templatesResult.value.templates : workoutsCache?.templates ?? [];
+        const nextPlans = plansResult.status === 'fulfilled' ? plansResult.value.plans : workoutsCache?.plans ?? [];
+        const nextSessions =
+          sessionsResult.status === 'fulfilled' ? sessionsResult.value.sessions : workoutsCache?.recentSessions ?? [];
+        const nextActiveSession = nextSessions.find((session) => session.status === 'in_progress') ?? null;
+        const nextExercises =
+          exercisesResult.status === 'fulfilled' && exercisesResult.value.exercises.length > 0
+            ? exercisesResult.value.exercises
+            : workoutsCache?.exercises && workoutsCache.exercises.length > 0
+              ? workoutsCache.exercises
+              : fallbackExercises;
+
+        setDashboard(nextDashboard);
+        setTemplates(nextTemplates);
+        setPlans(nextPlans);
+        setRecentSessions(nextSessions);
+        setActiveSession(nextActiveSession);
+        setExercises(nextExercises);
+        setTrackerExerciseId((current) => {
+          if (current && nextExercises.some((exercise) => exercise.id === current)) {
+            return current;
+          }
+          return nextExercises[0]?.id ?? '';
+        });
+        setCustomExerciseId((current) => {
+          if (current && nextExercises.some((exercise) => exercise.id === current)) {
+            return current;
+          }
+          return nextExercises[0]?.id ?? '';
+        });
+
+        lastSyncAtRef.current = updateWorkoutsCache({
+          dashboard: nextDashboard,
+          templates: nextTemplates,
+          plans: nextPlans,
+          recentSessions: nextSessions,
+          activeSession: nextActiveSession,
+          exercises: nextExercises,
+        });
+        hasLoadedOnceRef.current = true;
+
+        const hasAnyFailure =
+          dashboardResult.status === 'rejected' ||
+          templatesResult.status === 'rejected' ||
+          plansResult.status === 'rejected' ||
+          sessionsResult.status === 'rejected' ||
+          exercisesResult.status === 'rejected';
+
+        if (hasAnyFailure) {
+          setErrorMessage('Some workout data could not be synced. You can still use available selections and retry.');
+        }
+      } catch (error) {
+        setErrorMessage(getErrorMessage(error, 'Could not load workouts data.'));
+      }
+    })();
+
+    workoutsLoadPromise = loadPromise;
+
     try {
-      const [dashboardResult, templatesResult, plansResult, sessionsResult, exercisesResult] = await Promise.allSettled([
-        apiCall<DashboardResponse>(
-          `/api/workouts/dashboard?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
-        ),
-        apiCall<{ templates: Template[] }>('/api/workouts/templates'),
-        apiCall<{ plans: TrainingPlan[] }>('/api/workouts/plans'),
-        apiCall<{ sessions: Session[] }>('/api/workouts/sessions'),
-        apiCall<{ exercises: Exercise[] }>('/api/workouts/exercises'),
-      ]);
-
-      if (dashboardResult.status === 'fulfilled') {
-        setDashboard(dashboardResult.value);
-      }
-
-      if (templatesResult.status === 'fulfilled') {
-        setTemplates(templatesResult.value.templates);
-      }
-
-      if (plansResult.status === 'fulfilled') {
-        setPlans(plansResult.value.plans);
-      }
-
-      if (sessionsResult.status === 'fulfilled') {
-        setRecentSessions(sessionsResult.value.sessions);
-        setActiveSession(
-          sessionsResult.value.sessions.find((session) => session.status === 'in_progress') ?? null
-        );
-      }
-
-      if (exercisesResult.status === 'fulfilled' && exercisesResult.value.exercises.length > 0) {
-        setExercises(exercisesResult.value.exercises);
-        setTrackerExerciseId((current) => current || exercisesResult.value.exercises[0].id);
-        setCustomExerciseId((current) => current || exercisesResult.value.exercises[0].id);
-      } else {
-        setExercises((current) => (current.length > 0 ? current : fallbackExercises));
-      }
-
-      const hasAnyFailure =
-        dashboardResult.status === 'rejected' ||
-        templatesResult.status === 'rejected' ||
-        plansResult.status === 'rejected' ||
-        sessionsResult.status === 'rejected' ||
-        exercisesResult.status === 'rejected';
-
-      if (hasAnyFailure) {
-        setErrorMessage('Some workout data could not be synced. You can still use available selections and retry.');
-      }
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error, 'Could not load workouts data.'));
+      await loadPromise;
     } finally {
-      setIsLoading(false);
+      if (workoutsLoadPromise === loadPromise) {
+        workoutsLoadPromise = null;
+      }
+
+      if (shouldShowSpinner) {
+        setIsLoading(false);
+      }
     }
   }, [apiCall, fallbackExercises]);
 
   useFocusEffect(
     useCallback(() => {
-      void loadInitialData();
+      if (!hasLoadedOnceRef.current) {
+        void loadInitialData({ force: true });
+        return;
+      }
+
+      if (Date.now() - lastSyncAtRef.current < FOCUS_REFRESH_COOLDOWN_MS) {
+        return;
+      }
+
+      const interaction = InteractionManager.runAfterInteractions(() => {
+        void loadInitialData({ force: true, silent: true });
+      });
+
+      return () => {
+        interaction.cancel();
+      };
     }, [loadInitialData])
   );
+
+  const refreshNow = useCallback(async () => {
+    await loadInitialData({ force: true });
+  }, [loadInitialData]);
 
   const activePlan = dashboard?.activePlan ?? null;
 
@@ -542,7 +781,7 @@ export function useWorkoutsData() {
         });
 
         setFeedback('Template selected. Your personalized plan is ready to edit.');
-        await loadInitialData();
+        await loadInitialData({ force: true });
       } catch (error) {
         setErrorMessage(getErrorMessage(error, 'Could not import template.'));
       } finally {
@@ -578,7 +817,7 @@ export function useWorkoutsData() {
       });
 
       setFeedback('Empty plan created. Start personalizing it now.');
-      await loadInitialData();
+      await loadInitialData({ force: true });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, 'Could not create empty plan.'));
     } finally {
@@ -630,7 +869,7 @@ export function useWorkoutsData() {
 
       setCustomPlanExercises([]);
       setFeedback('Custom plan created successfully.');
-      await loadInitialData();
+      await loadInitialData({ force: true });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, 'Could not create custom plan.'));
     } finally {
@@ -722,7 +961,7 @@ export function useWorkoutsData() {
       });
 
       setFeedback('Your plan was updated successfully.');
-      await loadInitialData();
+      await loadInitialData({ force: true });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, 'Could not save plan changes.'));
     } finally {
@@ -948,6 +1187,7 @@ export function useWorkoutsData() {
     setCustomPlanName,
     setCustomPlanWeeklyTarget,
     loadInitialData,
+    refreshNow,
     addExerciseToCustomPlan,
     removeCustomPlanExercise,
     updateCustomPlanExercise,

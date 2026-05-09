@@ -37,7 +37,7 @@ export default function HomeScreen() {
     progressValue,
     errorMessage,
     feedback,
-    loadInitialData,
+    refreshNow,
   } = useWorkoutsData();
 
   const level = dashboard?.gamification?.level ?? 1;
@@ -61,7 +61,7 @@ export default function HomeScreen() {
   return (
     <Screen
       refreshing={isLoading}
-      onRefresh={loadInitialData}
+      onRefresh={refreshNow}
       contentContainerStyle={{ paddingTop: 8 }}
     >
       <Stack.Screen

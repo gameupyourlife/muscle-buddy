@@ -1,5 +1,14 @@
+import { inArray } from 'drizzle-orm';
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/api/require-auth';
+import { db } from '@/lib/db';
+import { user as authUser } from '@/lib/db/schema';
 import { discoverBuddies } from '@/lib/workouts/social-server';
+
+type SocialUserPreview = {
+  userId: string;
+  displayName: string;
+  image: string | null;
+};
 
 function parseCsv(value: string | null) {
   if (!value) {
@@ -32,7 +41,28 @@ export async function GET(request: Request) {
       language: url.searchParams.get('language') ?? undefined,
     });
 
-    return Response.json({ buddies });
+    const candidateUserIds = buddies.map((entry) => entry.userId);
+    const users =
+      candidateUserIds.length > 0
+        ? await db.query.user.findMany({ where: inArray(authUser.id, candidateUserIds) })
+        : [];
+    const userMap = new Map(users.map((entry) => [entry.id, entry]));
+
+    return Response.json({
+      buddies: buddies.map((profile) => {
+        const buddyUser = userMap.get(profile.userId);
+        const preview: SocialUserPreview = {
+          userId: profile.userId,
+          displayName: buddyUser?.name || buddyUser?.email || profile.userId,
+          image: buddyUser?.image ?? null,
+        };
+
+        return {
+          profile,
+          preview,
+        };
+      }),
+    });
   } catch (error) {
     console.error('Could not discover buddies', error);
     return Response.json(

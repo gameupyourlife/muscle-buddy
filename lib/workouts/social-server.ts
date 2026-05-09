@@ -8,12 +8,32 @@ import {
     socialMessages,
     socialNotifications,
     socialOneOffAvailability,
-    socialProfiles,
     socialRecurringAvailability,
     socialReports,
+    user,
 } from '@/lib/db/schema';
 
-export type SocialProfileRow = typeof socialProfiles.$inferSelect;
+type UserRow = typeof user.$inferSelect;
+
+export type SocialProfileRow = {
+  userId: string;
+  experienceLevel: string;
+  trainingGoals: string;
+  preferredDays: string;
+  preferredTimeWindows: string;
+  genderPreference: string;
+  gymDistrict: string;
+  city: string;
+  language: string;
+  bio: string | null;
+  isDiscoverable: boolean;
+  isPrivateProfile: boolean;
+  searchRadiusKm: number;
+  areaLatE5: number | null;
+  areaLngE5: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 export type BuddyRequestRow = typeof buddyRequests.$inferSelect;
 export type BuddyRow = typeof buddies.$inferSelect;
 export type SocialMessageRow = typeof socialMessages.$inferSelect;
@@ -33,7 +53,6 @@ export type DiscoverFilters = {
 };
 
 export type UpsertSocialProfileInput = {
-  displayName: string;
   experienceLevel: string;
   trainingGoals: string[];
   preferredDays: string[];
@@ -204,64 +223,69 @@ function profileSupportsDays(profileDays: string, requestedDays: string[] | unde
   return requestedDays.some((day) => profileDaySet.has(day.trim().toLowerCase()));
 }
 
+function mapUserToSocialProfile(entry: UserRow | null | undefined): SocialProfileRow | null {
+  if (!entry) {
+    return null;
+  }
+
+  return {
+    userId: entry.id,
+    experienceLevel: entry.socialExperienceLevel,
+    trainingGoals: entry.socialTrainingGoals,
+    preferredDays: entry.socialPreferredDays,
+    preferredTimeWindows: entry.socialPreferredTimeWindows,
+    genderPreference: entry.socialGenderPreference,
+    gymDistrict: entry.socialGymDistrict,
+    city: entry.socialCity,
+    language: entry.socialLanguage,
+    bio: entry.socialBio,
+    isDiscoverable: entry.socialIsDiscoverable,
+    isPrivateProfile: entry.socialIsPrivateProfile,
+    searchRadiusKm: entry.socialSearchRadiusKm,
+    areaLatE5: entry.socialAreaLatE5,
+    areaLngE5: entry.socialAreaLngE5,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+  };
+}
+
 export async function getSocialProfile(userId: string) {
-  return db.query.socialProfiles.findFirst({
-    where: eq(socialProfiles.userId, userId),
+  const entry = await db.query.user.findFirst({
+    where: eq(user.id, userId),
   });
+
+  return mapUserToSocialProfile(entry);
 }
 
 export async function upsertSocialProfile(userId: string, input: UpsertSocialProfileInput) {
   await db
-    .insert(socialProfiles)
-    .values({
-      userId,
-      displayName: input.displayName.trim(),
-      experienceLevel: input.experienceLevel.trim().toLowerCase(),
-      trainingGoals: normalizeTags(input.trainingGoals),
-      preferredDays: normalizeTags(input.preferredDays),
-      preferredTimeWindows: normalizeTags(input.preferredTimeWindows),
-      genderPreference: input.genderPreference.trim().toLowerCase(),
-      gymDistrict: input.gymDistrict.trim(),
-      city: input.city.trim(),
-      language: input.language.trim().toLowerCase(),
-      bio: input.bio?.trim() || null,
-      isDiscoverable: input.isDiscoverable,
-      isPrivateProfile: input.isPrivateProfile,
-      searchRadiusKm: clampRadiusKm(input.searchRadiusKm),
-      areaLatE5: input.areaLatE5 ?? null,
-      areaLngE5: input.areaLngE5 ?? null,
+    .update(user)
+    .set({
+      socialExperienceLevel: input.experienceLevel.trim().toLowerCase(),
+      socialTrainingGoals: normalizeTags(input.trainingGoals),
+      socialPreferredDays: normalizeTags(input.preferredDays),
+      socialPreferredTimeWindows: normalizeTags(input.preferredTimeWindows),
+      socialGenderPreference: input.genderPreference.trim().toLowerCase(),
+      socialGymDistrict: input.gymDistrict.trim(),
+      socialCity: input.city.trim(),
+      socialLanguage: input.language.trim().toLowerCase(),
+      socialBio: input.bio?.trim() || null,
+      socialIsDiscoverable: input.isDiscoverable,
+      socialIsPrivateProfile: input.isPrivateProfile,
+      socialSearchRadiusKm: clampRadiusKm(input.searchRadiusKm),
+      socialAreaLatE5: input.areaLatE5 ?? null,
+      socialAreaLngE5: input.areaLngE5 ?? null,
+      updatedAt: new Date(),
     })
-    .onConflictDoUpdate({
-      target: socialProfiles.userId,
-      set: {
-        displayName: input.displayName.trim(),
-        experienceLevel: input.experienceLevel.trim().toLowerCase(),
-        trainingGoals: normalizeTags(input.trainingGoals),
-        preferredDays: normalizeTags(input.preferredDays),
-        preferredTimeWindows: normalizeTags(input.preferredTimeWindows),
-        genderPreference: input.genderPreference.trim().toLowerCase(),
-        gymDistrict: input.gymDistrict.trim(),
-        city: input.city.trim(),
-        language: input.language.trim().toLowerCase(),
-        bio: input.bio?.trim() || null,
-        isDiscoverable: input.isDiscoverable,
-        isPrivateProfile: input.isPrivateProfile,
-        searchRadiusKm: clampRadiusKm(input.searchRadiusKm),
-        areaLatE5: input.areaLatE5 ?? null,
-        areaLngE5: input.areaLngE5 ?? null,
-        updatedAt: new Date(),
-      },
-    });
+    .where(eq(user.id, userId));
 
   return getSocialProfile(userId);
 }
 
 export async function discoverBuddies(userId: string, filters: DiscoverFilters) {
-  const myProfile = await db.query.socialProfiles.findFirst({
-    where: eq(socialProfiles.userId, userId),
-  });
+  const myProfile = await getSocialProfile(userId);
 
-  if (!myProfile) {
+  if (!myProfile || !myProfile.city.trim() || !myProfile.gymDistrict.trim()) {
     throw new Error('Set up your social profile before discovering buddies.');
   }
 
@@ -281,15 +305,18 @@ export async function discoverBuddies(userId: string, filters: DiscoverFilters) 
     }
   }
 
-  const candidates = await db.query.socialProfiles.findMany({
+  const candidateUsers = await db.query.user.findMany({
     where: and(
-      eq(socialProfiles.isDiscoverable, true),
-      eq(socialProfiles.isPrivateProfile, false),
-      eq(socialProfiles.city, myProfile.city)
+      eq(user.socialIsDiscoverable, true),
+      eq(user.socialIsPrivateProfile, false),
+      eq(user.socialCity, myProfile.city)
     ),
-    orderBy: [desc(socialProfiles.updatedAt)],
+    orderBy: [desc(user.updatedAt)],
     limit: 200,
   });
+  const candidates = candidateUsers
+    .map((entry) => mapUserToSocialProfile(entry))
+    .filter((entry): entry is SocialProfileRow => !!entry);
 
   const radiusKm = clampRadiusKm(filters.radiusKm ?? myProfile.searchRadiusKm);
   const requestedDistrict = filters.district?.trim().toLowerCase() || null;

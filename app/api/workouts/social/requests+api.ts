@@ -1,7 +1,7 @@
 import { inArray } from 'drizzle-orm';
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/api/require-auth';
 import { db } from '@/lib/db';
-import { socialProfiles, user as authUser } from '@/lib/db/schema';
+import { user as authUser } from '@/lib/db/schema';
 import { listBuddyRequests, respondToBuddyRequest, sendBuddyRequest } from '@/lib/workouts/social-server';
 
 type SocialUserPreview = {
@@ -17,22 +17,17 @@ async function loadUserPreviews(userIds: string[]) {
     return new Map<string, SocialUserPreview>();
   }
 
-  const [users, profiles] = await Promise.all([
-    db.query.user.findMany({ where: inArray(authUser.id, uniqueIds) }),
-    db.query.socialProfiles.findMany({ where: inArray(socialProfiles.userId, uniqueIds) }),
-  ]);
+  const users = await db.query.user.findMany({ where: inArray(authUser.id, uniqueIds) });
 
   const userMap = new Map(users.map((entry) => [entry.id, entry]));
-  const profileMap = new Map(profiles.map((entry) => [entry.userId, entry]));
   const previewMap = new Map<string, SocialUserPreview>();
 
   for (const userId of uniqueIds) {
     const user = userMap.get(userId);
-    const profile = profileMap.get(userId);
 
     previewMap.set(userId, {
       userId,
-      displayName: profile?.displayName || user?.name || user?.email || userId,
+      displayName: user?.name || user?.email || userId,
       image: user?.image ?? null,
     });
   }

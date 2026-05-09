@@ -9,28 +9,28 @@ import { ListRow } from '@/components/ui/list-row';
 import { OptionChips } from '@/components/ui/option-chips';
 import { ListGroup, Screen, SectionHeader, Surface } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
-import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { authClient } from '@/lib/auth-client';
 import {
-    SOCIAL_DAY_OPTIONS,
     SOCIAL_EXPERIENCE_OPTIONS,
     SOCIAL_GOAL_OPTIONS,
     useSocialData,
 } from '@/lib/workouts/use-social';
+import { useRouter } from 'expo-router';
 import {
     CalendarPlusIcon,
-    ChevronDownIcon,
-    ChevronUpIcon,
     MessageCircleIcon,
     SearchIcon,
+    Settings2Icon,
     ShieldAlertIcon,
     UserPlusIcon,
     UserXIcon,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View } from 'react-native';
 
 export default function BuddiesScreen() {
+  const router = useRouter();
   const {
     profile,
     discoverResults,
@@ -44,14 +44,12 @@ export default function BuddiesScreen() {
     notifications,
     filters,
     isLoading,
-    isSavingProfile,
     isRefreshingDiscover,
     isSendingRequest,
     isSendingMessage,
     feedback,
     errorMessage,
-    loadInitialData,
-    saveProfile,
+    refreshNow,
     refreshDiscover,
     sendRequest,
     respondRequest,
@@ -64,33 +62,8 @@ export default function BuddiesScreen() {
     setFilters,
     setActiveBuddyUserId,
   } = useSocialData();
-
-  // Profile editor local state
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
-  const [city, setCity] = useState(profile?.city ?? '');
-  const [district, setDistrict] = useState(profile?.gymDistrict ?? '');
-  const [language, setLanguage] = useState(profile?.language ?? 'en');
-  const [bio, setBio] = useState(profile?.bio ?? '');
-  const [experience, setExperience] = useState(profile?.experienceLevel ?? 'beginner');
-  const [goal, setGoal] = useState(
-    (profile?.trainingGoals?.split(',')[0] || 'general_fitness').trim()
-  );
-  const [day, setDay] = useState((profile?.preferredDays?.split(',')[0] || '1').trim());
-  const [radius, setRadius] = useState(String(profile?.searchRadiusKm ?? 5));
-
-  useEffect(() => {
-    if (!profile) return;
-    setDisplayName(profile.displayName);
-    setCity(profile.city);
-    setDistrict(profile.gymDistrict);
-    setLanguage(profile.language);
-    setBio(profile.bio ?? '');
-    setExperience(profile.experienceLevel);
-    setGoal((profile.trainingGoals.split(',')[0] || 'general_fitness').trim());
-    setDay((profile.preferredDays.split(',')[0] || '1').trim());
-    setRadius(String(profile.searchRadiusKm));
-  }, [profile?.userId]);
+  const { data: session } = authClient.useSession();
+  const authDisplayName = session?.user?.name || session?.user?.email || 'Set up your profile';
 
   const [chatDraft, setChatDraft] = useState('');
   const [meetupBuddyId, setMeetupBuddyId] = useState<string | null>(null);
@@ -104,23 +77,6 @@ export default function BuddiesScreen() {
 
   const activeBuddy = buddies.find((b) => b.buddyUserId === activeBuddyUserId);
 
-  const handleSaveProfile = () =>
-    saveProfile({
-      displayName: displayName.trim() || 'Athlete',
-      experienceLevel: experience,
-      trainingGoals: [goal],
-      preferredDays: [day],
-      preferredTimeWindows: ['evening'],
-      genderPreference: 'any',
-      gymDistrict: district,
-      city,
-      language,
-      bio: bio.trim() || null,
-      isDiscoverable: profile?.isDiscoverable ?? true,
-      isPrivateProfile: profile?.isPrivateProfile ?? false,
-      searchRadiusKm: Number(radius) || 5,
-    });
-
   const submitMeetup = async (buddyUserId: string) => {
     const startsAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
     const endsAt = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
@@ -128,7 +84,7 @@ export default function BuddiesScreen() {
       receiverUserId: buddyUserId,
       startsAt,
       endsAt,
-      gymArea: meetupGym.trim() || district || 'Main gym',
+      gymArea: meetupGym.trim() || profile?.gymDistrict || 'Main gym',
       note: meetupNote.trim() || null,
     });
     setMeetupBuddyId(null);
@@ -139,21 +95,21 @@ export default function BuddiesScreen() {
   return (
     <Screen
       refreshing={isLoading}
-      onRefresh={loadInitialData}
+      onRefresh={refreshNow}
       contentContainerStyle={{ paddingTop: 8 }}
     >
-      {/* Profile editor (collapsible) */}
+      {/* Buddy profile summary */}
       <Surface>
         <View className="flex-row items-center justify-between gap-2">
           <View className="flex-row items-center gap-3 flex-1">
-            <UserAvatar name={displayName || profile?.displayName} size={44} />
+            <UserAvatar name={authDisplayName} size={44} />
             <View className="flex-1">
               <Text className="text-[16px] font-semibold text-foreground" numberOfLines={1}>
-                {profile?.displayName || 'Set up your profile'}
+                {authDisplayName}
               </Text>
               <Text className="text-[13px] text-muted-foreground" numberOfLines={1}>
                 {profile
-                  ? `${experience} · ${city || 'no city'}${
+                  ? `${profile.experienceLevel} · ${profile.city || 'no city'}${
                       profile.isDiscoverable ? '' : ' · hidden'
                     }`
                   : 'Required to discover buddies'}
@@ -161,94 +117,35 @@ export default function BuddiesScreen() {
             </View>
           </View>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onPress={() => setProfileOpen((v) => !v)}
+            onPress={() =>
+              router.push({
+                pathname: '/(tabs)/(home)/me',
+                params: {
+                  focus: 'buddy-profile',
+                  focusNonce: String(Date.now()),
+                },
+              })
+            }
           >
-            <Icon
-              as={profileOpen ? ChevronUpIcon : ChevronDownIcon}
-              size={18}
-              className="text-foreground"
-            />
-            <Text>{profileOpen ? 'Hide' : 'Edit'}</Text>
+            <Icon as={Settings2Icon} size={16} className="text-foreground" />
+            <Text>Profile settings</Text>
           </Button>
         </View>
-
-        {profileOpen ? (
-          <View className="gap-3 pt-2 border-t-hairline border-separator">
-            <View className="gap-1.5">
-              <Label>Display name</Label>
-              <Input value={displayName} onChangeText={setDisplayName} placeholder="Alex" />
-            </View>
-            <View className="flex-row gap-3">
-              <View className="flex-1 gap-1.5">
-                <Label>City</Label>
-                <Input value={city} onChangeText={setCity} placeholder="Berlin" />
-              </View>
-              <View className="flex-1 gap-1.5">
-                <Label>Gym district</Label>
-                <Input
-                  value={district}
-                  onChangeText={setDistrict}
-                  placeholder="Friedrichshain"
-                />
-              </View>
-            </View>
-            <View className="gap-1.5">
-              <Label>Experience</Label>
-              <OptionChips
-                layout="scroll"
-                size="sm"
-                items={SOCIAL_EXPERIENCE_OPTIONS}
-                value={experience}
-                onValueChange={setExperience}
-              />
-            </View>
-            <View className="gap-1.5">
-              <Label>Primary goal</Label>
-              <OptionChips
-                layout="scroll"
-                size="sm"
-                items={SOCIAL_GOAL_OPTIONS}
-                value={goal}
-                onValueChange={setGoal}
-              />
-            </View>
-            <View className="gap-1.5">
-              <Label>Preferred day</Label>
-              <OptionChips
-                layout="scroll"
-                size="sm"
-                items={SOCIAL_DAY_OPTIONS}
-                value={day}
-                onValueChange={setDay}
-              />
-            </View>
-            <View className="flex-row gap-3">
-              <View className="flex-1 gap-1.5">
-                <Label>Language</Label>
-                <Input value={language} onChangeText={setLanguage} placeholder="en" />
-              </View>
-              <View className="flex-1 gap-1.5">
-                <Label>Search radius (km)</Label>
-                <Input value={radius} onChangeText={setRadius} keyboardType="numeric" />
-              </View>
-            </View>
-            <View className="gap-1.5">
-              <Label>Bio</Label>
-              <Textarea
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Tell potential buddies about your training style…"
-                numberOfLines={3}
-              />
-            </View>
-            <Button onPress={handleSaveProfile} disabled={isSavingProfile}>
-              {isSavingProfile ? <ActivityIndicator size="small" color="white" /> : null}
-              <Text>{isSavingProfile ? 'Saving…' : 'Save profile'}</Text>
-            </Button>
-          </View>
-        ) : null}
+        <View className="flex-row flex-wrap gap-2 pt-2 border-t-hairline border-separator">
+          <Badge variant={profile?.isDiscoverable ? 'default' : 'outline'}>
+            <Text>{profile?.isDiscoverable ? 'Discoverable' : 'Hidden from discover'}</Text>
+          </Badge>
+          <Badge variant="outline">
+            <Text>{profile?.isPrivateProfile ? 'Private profile' : 'Public profile'}</Text>
+          </Badge>
+          {profile?.city ? (
+            <Badge variant="outline">
+              <Text>{profile.city}</Text>
+            </Badge>
+          ) : null}
+        </View>
       </Surface>
 
       {unreadCount > 0 ? (
@@ -270,7 +167,7 @@ export default function BuddiesScreen() {
             <ListRow
               key={buddy.id}
               icon={MessageCircleIcon}
-              title={buddy.profile?.displayName || 'Buddy'}
+              title={buddy.preview?.displayName || 'Buddy'}
               subtitle={
                 buddy.profile
                   ? `${buddy.profile.experienceLevel} · ${buddy.profile.city || '—'}`
@@ -296,7 +193,7 @@ export default function BuddiesScreen() {
       {activeBuddy ? (
         <>
           <SectionHeader
-            title={`Chat · ${activeBuddy.profile?.displayName || 'Buddy'}`}
+            title={`Chat · ${activeBuddy.preview?.displayName || 'Buddy'}`}
             action={
               <Button
                 variant="ghost"
@@ -399,7 +296,11 @@ export default function BuddiesScreen() {
           <Text className="text-[15px] font-semibold text-foreground">Plan meetup</Text>
           <View className="gap-1.5">
             <Label>Gym area</Label>
-            <Input value={meetupGym} onChangeText={setMeetupGym} placeholder={district || 'Main gym'} />
+            <Input
+              value={meetupGym}
+              onChangeText={setMeetupGym}
+              placeholder={profile?.gymDistrict || 'Main gym'}
+            />
           </View>
           <View className="gap-1.5">
             <Label>Note (optional)</Label>
@@ -529,7 +430,9 @@ export default function BuddiesScreen() {
           <Button
             variant="ghost"
             size="sm"
-            onPress={refreshDiscover}
+            onPress={() => {
+              void refreshDiscover();
+            }}
             disabled={isRefreshingDiscover}
           >
             <Icon as={SearchIcon} size={14} className="text-primary" />
@@ -567,13 +470,13 @@ export default function BuddiesScreen() {
         <ListGroup>
           {discoverResults.slice(0, 10).map((candidate) => {
             const alreadyOutgoing = outgoingRequests.some(
-              (req) => req.toUserId === candidate.userId
+              (req) => req.toUserId === candidate.profile.userId
             );
             return (
               <ListRow
-                key={candidate.userId}
-                title={candidate.displayName}
-                subtitle={`${candidate.experienceLevel} · ${candidate.gymDistrict || candidate.city || '—'}`}
+                key={candidate.profile.userId}
+                title={candidate.preview?.displayName || 'Athlete'}
+                subtitle={`${candidate.profile.experienceLevel} · ${candidate.profile.gymDistrict || candidate.profile.city || '—'}`}
                 trailing={
                   alreadyOutgoing ? (
                     <Badge variant="outline">
@@ -582,7 +485,7 @@ export default function BuddiesScreen() {
                   ) : (
                     <Button
                       size="sm"
-                      onPress={() => sendRequest(candidate.userId)}
+                      onPress={() => sendRequest(candidate.profile.userId)}
                       disabled={isSendingRequest}
                     >
                       <Icon

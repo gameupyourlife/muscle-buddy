@@ -1,6 +1,7 @@
 import '@/global.css';
 import { authClient } from '@/lib/auth-client';
 import { NAV_THEME } from '@/lib/theme';
+import { preloadWorkoutsData } from '@/lib/workouts/use-workouts';
 import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
@@ -33,14 +34,40 @@ const HIDDEN = { headerShown: false } as const;
 function Routes() {
   const { data: session, isPending } = authClient.useSession();
   const isSignedIn = !!session?.user;
+  const [isBootstrapping, setIsBootstrapping] = React.useState(true);
 
   React.useEffect(() => {
-    if (!isPending) {
-      SplashScreen.hideAsync();
-    }
-  }, [isPending]);
+    let isCancelled = false;
 
-  if (isPending) {
+    if (isPending) {
+      return;
+    }
+
+    const bootstrap = async () => {
+      if (isSignedIn) {
+        try {
+          await preloadWorkoutsData();
+        } catch {
+          // Keep startup resilient: we still enter the app even if preload fails.
+        }
+      }
+
+      if (isCancelled) {
+        return;
+      }
+
+      setIsBootstrapping(false);
+      await SplashScreen.hideAsync();
+    };
+
+    void bootstrap();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isPending, isSignedIn]);
+
+  if (isPending || isBootstrapping) {
     return null;
   }
 

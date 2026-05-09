@@ -400,40 +400,6 @@ export const nutritionDailyXp = pgTable(
   ]
 );
 
-export const socialProfiles = pgTable(
-  'social_profile',
-  {
-    userId: text('user_id')
-      .primaryKey()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    displayName: text('display_name').notNull(),
-    experienceLevel: text('experience_level').notNull().default('beginner'),
-    trainingGoals: text('training_goals').notNull().default(''),
-    preferredDays: text('preferred_days').notNull().default(''),
-    preferredTimeWindows: text('preferred_time_windows').notNull().default(''),
-    genderPreference: text('gender_preference').notNull().default('any'),
-    gymDistrict: text('gym_district').notNull(),
-    city: text('city').notNull(),
-    language: text('language').notNull().default('en'),
-    bio: text('bio'),
-    isDiscoverable: boolean('is_discoverable').notNull().default(true),
-    isPrivateProfile: boolean('is_private_profile').notNull().default(false),
-    searchRadiusKm: integer('search_radius_km').notNull().default(10),
-    areaLatE5: integer('area_lat_e5'),
-    areaLngE5: integer('area_lng_e5'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('social_profile_discoverable_idx').on(table.isDiscoverable),
-    index('social_profile_location_idx').on(table.city, table.gymDistrict),
-    index('social_profile_radius_idx').on(table.searchRadiusKm),
-  ]
-);
-
 export const buddyRequests = pgTable(
   'buddy_request',
   {
@@ -798,16 +764,6 @@ export const nutritionDailyXpRelations = relations(nutritionDailyXp, ({ one }) =
     fields: [nutritionDailyXp.userId],
     references: [user.id],
   }),
-}));
-
-export const socialProfileRelations = relations(socialProfiles, ({ one, many }) => ({
-  user: one(user, {
-    fields: [socialProfiles.userId],
-    references: [user.id],
-  }),
-  recurringAvailability: many(socialRecurringAvailability),
-  oneOffAvailability: many(socialOneOffAvailability),
-  notifications: many(socialNotifications),
 }));
 
 export const buddyRequestRelations = relations(buddyRequests, ({ one }) => ({

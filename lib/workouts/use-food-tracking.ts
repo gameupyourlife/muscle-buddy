@@ -2,7 +2,8 @@ import { getApiBaseUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import { NUTRITION_MEAL_TYPES } from '@/lib/workouts/constants';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { InteractionManager } from 'react-native';
 
 export type MealType = (typeof NUTRITION_MEAL_TYPES)[number];
 
@@ -119,6 +120,45 @@ export const MEAL_TYPE_OPTIONS: Array<{ value: MealType; label: string }> = [
   { value: 'snack', label: 'Snack' },
 ];
 
+const FOOD_FOCUS_REFRESH_COOLDOWN_MS = 45_000;
+
+type FoodCacheSnapshot = {
+  logDate: string;
+  goals: NutritionGoals | null;
+  logs: FoodLog[];
+  recentFoods: FoodLog[];
+  summary: FoodSummary | null;
+  trendPoints: TrendPoint[];
+  mealTemplates: MealTemplate[];
+  cachedAt: number;
+};
+
+type LoadFoodOptions = {
+  force?: boolean;
+  silent?: boolean;
+};
+
+let foodCache: FoodCacheSnapshot | null = null;
+let foodLoadPromise: Promise<void> | null = null;
+
+function updateFoodCache(
+  patch: Partial<Omit<FoodCacheSnapshot, 'cachedAt'>>
+) {
+  const nextCache: FoodCacheSnapshot = {
+    logDate: patch.logDate ?? foodCache?.logDate ?? getTodayDateKey(),
+    goals: patch.goals ?? foodCache?.goals ?? null,
+    logs: patch.logs ?? foodCache?.logs ?? [],
+    recentFoods: patch.recentFoods ?? foodCache?.recentFoods ?? [],
+    summary: patch.summary ?? foodCache?.summary ?? null,
+    trendPoints: patch.trendPoints ?? foodCache?.trendPoints ?? [],
+    mealTemplates: patch.mealTemplates ?? foodCache?.mealTemplates ?? [],
+    cachedAt: Date.now(),
+  };
+
+  foodCache = nextCache;
+  return nextCache.cachedAt;
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'message' in error) {
     const message = (error as { message?: unknown }).message;
@@ -140,17 +180,17 @@ function getTodayDateKey() {
 }
 
 export function useFoodTrackingData() {
-  const [logDate, setLogDate] = useState(getTodayDateKey);
-  const [goals, setGoals] = useState<NutritionGoals | null>(null);
-  const [logs, setLogs] = useState<FoodLog[]>([]);
-  const [recentFoods, setRecentFoods] = useState<FoodLog[]>([]);
-  const [summary, setSummary] = useState<FoodSummary | null>(null);
-  const [trendPoints, setTrendPoints] = useState<TrendPoint[]>([]);
+  const [logDate, setLogDate] = useState(foodCache?.logDate ?? getTodayDateKey);
+  const [goals, setGoals] = useState<NutritionGoals | null>(foodCache?.goals ?? null);
+  const [logs, setLogs] = useState<FoodLog[]>(foodCache?.logs ?? []);
+  const [recentFoods, setRecentFoods] = useState<FoodLog[]>(foodCache?.recentFoods ?? []);
+  const [summary, setSummary] = useState<FoodSummary | null>(foodCache?.summary ?? null);
+  const [trendPoints, setTrendPoints] = useState<TrendPoint[]>(foodCache?.trendPoints ?? []);
   const [catalogResults, setCatalogResults] = useState<FoodCatalogItem[]>([]);
   const [barcodeResult, setBarcodeResult] = useState<BarcodeResult | null>(null);
-  const [mealTemplates, setMealTemplates] = useState<MealTemplate[]>([]);
+  const [mealTemplates, setMealTemplates] = useState<MealTemplate[]>(foodCache?.mealTemplates ?? []);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!foodCache);
   const [isSavingGoals, setIsSavingGoals] = useState(false);
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
@@ -158,6 +198,9 @@ export function useFoodTrackingData() {
   const [isWorkingWithTemplates, setIsWorkingWithTemplates] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const hasLoadedOnceRef = useRef(Boolean(foodCache));
+  const lastSyncAtRef = useRef(foodCache?.cachedAt ?? 0);
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', []);
@@ -206,6 +249,8 @@ export function useFoodTrackingData() {
   const refreshGoals = useCallback(async () => {
     const response = await apiCall<{ goals: NutritionGoals | null }>('/api/workouts/food/goals');
     setGoals(response.goals);
+    lastSyncAtRef.current = updateFoodCache({ goals: response.goals });
+    hasLoadedOnceRef.current = true;
   }, [apiCall]);
 
   const refreshLogs = useCallback(
@@ -215,6 +260,12 @@ export function useFoodTrackingData() {
       );
       setLogs(response.logs);
       setRecentFoods(response.recentFoods);
+      lastSyncAtRef.current = updateFoodCache({
+        logDate: response.logDate,
+        logs: response.logs,
+        recentFoods: response.recentFoods,
+      });
+      hasLoadedOnceRef.current = true;
     },
     [apiCall, timeZone]
   );
@@ -225,6 +276,8 @@ export function useFoodTrackingData() {
         `/api/workouts/food/summary?logDate=${encodeURIComponent(dateValue)}&timeZone=${encodeURIComponent(timeZone)}&awardXp=true`
       );
       setSummary(response);
+      lastSyncAtRef.current = updateFoodCache({ logDate: dateValue, summary: response });
+      hasLoadedOnceRef.current = true;
     },
     [apiCall, timeZone]
   );
@@ -232,6 +285,8 @@ export function useFoodTrackingData() {
   const refreshTemplates = useCallback(async () => {
     const response = await apiCall<{ templates: MealTemplate[] }>('/api/workouts/food/templates');
     setMealTemplates(response.templates);
+    lastSyncAtRef.current = updateFoodCache({ mealTemplates: response.templates });
+    hasLoadedOnceRef.current = true;
   }, [apiCall]);
 
   const refreshTrends = useCallback(
@@ -240,27 +295,69 @@ export function useFoodTrackingData() {
         `/api/workouts/food/trends?logDate=${encodeURIComponent(dateValue)}&timeZone=${encodeURIComponent(timeZone)}&days=7`
       );
       setTrendPoints(response.points);
+      lastSyncAtRef.current = updateFoodCache({ logDate: dateValue, trendPoints: response.points });
+      hasLoadedOnceRef.current = true;
     },
     [apiCall, timeZone]
   );
 
   const loadData = useCallback(
-    async (dateValue = logDate) => {
-      setIsLoading(true);
+    async (dateValue = logDate, options: LoadFoodOptions = {}) => {
+      const { force = false, silent = false } = options;
+      const shouldShowSpinner = !silent || !hasLoadedOnceRef.current;
+      const currentCacheDate = foodCache?.logDate ?? logDate;
+
+      if (!force && foodLoadPromise) {
+        await foodLoadPromise;
+        return;
+      }
+
+      if (
+        !force &&
+        hasLoadedOnceRef.current &&
+        currentCacheDate === dateValue &&
+        Date.now() - lastSyncAtRef.current < FOOD_FOCUS_REFRESH_COOLDOWN_MS
+      ) {
+        return;
+      }
+
+      if (shouldShowSpinner) {
+        setIsLoading(true);
+      }
+
+      if (!silent) {
+        setFeedback(null);
+      }
       setErrorMessage(null);
 
+      setLogDate(dateValue);
+
+      const loadPromise = (async () => {
+        try {
+          await Promise.all([
+            refreshGoals(),
+            refreshLogs(dateValue),
+            refreshSummary(dateValue),
+            refreshTrends(dateValue),
+            refreshTemplates(),
+          ]);
+        } catch (error) {
+          setErrorMessage(getErrorMessage(error, 'Could not load food tracking data.'));
+        }
+      })();
+
+      foodLoadPromise = loadPromise;
+
       try {
-        await Promise.all([
-          refreshGoals(),
-          refreshLogs(dateValue),
-          refreshSummary(dateValue),
-          refreshTrends(dateValue),
-          refreshTemplates(),
-        ]);
-      } catch (error) {
-        setErrorMessage(getErrorMessage(error, 'Could not load food tracking data.'));
+        await loadPromise;
       } finally {
-        setIsLoading(false);
+        if (foodLoadPromise === loadPromise) {
+          foodLoadPromise = null;
+        }
+
+        if (shouldShowSpinner) {
+          setIsLoading(false);
+        }
       }
     },
     [logDate, refreshGoals, refreshLogs, refreshSummary, refreshTemplates, refreshTrends]
@@ -268,17 +365,36 @@ export function useFoodTrackingData() {
 
   useFocusEffect(
     useCallback(() => {
-      void loadData();
+      if (!hasLoadedOnceRef.current) {
+        void loadData(logDate, { force: true });
+        return;
+      }
+
+      if (Date.now() - lastSyncAtRef.current < FOOD_FOCUS_REFRESH_COOLDOWN_MS) {
+        return;
+      }
+
+      const interaction = InteractionManager.runAfterInteractions(() => {
+        void loadData(logDate, { force: true, silent: true });
+      });
+
+      return () => {
+        interaction.cancel();
+      };
     }, [loadData])
   );
 
   const updateDate = useCallback(
     async (nextDate: string) => {
       setLogDate(nextDate);
-      await loadData(nextDate);
+      await loadData(nextDate, { force: true });
     },
     [loadData]
   );
+
+  const refreshNow = useCallback(async () => {
+    await loadData(logDate, { force: true });
+  }, [loadData, logDate]);
 
   const saveGoals = useCallback(
     async (nextGoals: NutritionGoals) => {
@@ -562,6 +678,7 @@ export function useFoodTrackingData() {
     setErrorMessage,
     setBarcodeResult,
     loadData,
+    refreshNow,
     updateDate,
     saveGoals,
     addFoodLog,
