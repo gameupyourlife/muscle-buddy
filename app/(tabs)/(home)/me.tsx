@@ -1,3 +1,4 @@
+import { PasswordField } from '@/components/ui/auth-shell';
 import { Badge } from '@/components/ui/badge';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,7 @@ import {
     Trash2Icon,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -444,6 +445,17 @@ export default function MeScreen() {
   };
 
   const handleRevoke = async () => {
+    Alert.alert(
+      'Revoke other sessions?',
+      'You will be signed out on every other device.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Revoke', style: 'destructive', onPress: () => void doRevoke() },
+      ],
+    );
+  };
+
+  const doRevoke = async () => {
     setSessionFb(null);
     setIsRevoking(true);
     try {
@@ -461,6 +473,17 @@ export default function MeScreen() {
   };
 
   const handleSignOut = async () => {
+    Alert.alert(
+      'Sign out?',
+      'You will need to sign in again to use the app.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive', onPress: () => void doSignOut() },
+      ],
+    );
+  };
+
+  const doSignOut = async () => {
     setSessionFb(null);
     setIsSigningOut(true);
     try {
@@ -479,6 +502,17 @@ export default function MeScreen() {
 
   const handleDelete = async () => {
     if (!canDelete) return;
+    Alert.alert(
+      'Delete account permanently?',
+      'This will erase your profile, workouts, plans, food log, and buddy data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete forever', style: 'destructive', onPress: () => void doDelete() },
+      ],
+    );
+  };
+
+  const doDelete = async () => {
     setDeleteFb(null);
     setIsDeleting(true);
     try {
@@ -857,36 +891,28 @@ export default function MeScreen() {
       {/* Change password */}
       <SectionHeader title="Password" />
       <Surface>
-        <View className="gap-1.5">
-          <Label>Current password</Label>
-          <Input
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            secureTextEntry
-            autoComplete="password"
-            textContentType="password"
-          />
-        </View>
-        <View className="gap-1.5">
-          <Label>New password</Label>
-          <Input
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-            autoComplete="password-new"
-            textContentType="newPassword"
-          />
-        </View>
-        <View className="gap-1.5">
-          <Label>Confirm new password</Label>
-          <Input
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            autoComplete="password-new"
-            textContentType="newPassword"
-          />
-        </View>
+        <PasswordField
+          label="Current password"
+          value={currentPassword}
+          onChangeText={setCurrentPassword}
+          autoComplete="password"
+          textContentType="password"
+        />
+        <PasswordField
+          label="New password"
+          value={newPassword}
+          onChangeText={setNewPassword}
+          autoComplete="password-new"
+          textContentType="newPassword"
+          showStrength
+        />
+        <PasswordField
+          label="Confirm new password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          autoComplete="password-new"
+          textContentType="newPassword"
+        />
         {passwordError ? (
           <Text className="text-[13px] text-destructive">{passwordError}</Text>
         ) : null}
@@ -944,14 +970,11 @@ export default function MeScreen() {
             autoCapitalize="characters"
           />
         </View>
-        <View className="gap-1.5">
-          <Label>Password (if required)</Label>
-          <Input
-            value={deletePassword}
-            onChangeText={setDeletePassword}
-            secureTextEntry
-          />
-        </View>
+        <PasswordField
+          label="Password (if required)"
+          value={deletePassword}
+          onChangeText={setDeletePassword}
+        />
         <Button variant="destructive" onPress={handleDelete} disabled={!canDelete}>
           {isDeleting ? <ActivityIndicator size="small" color="white" /> : null}
           <Icon as={Trash2Icon} size={16} className="text-destructive-foreground" />

@@ -1,4 +1,4 @@
-import { AuthField, AuthLink, AuthShell } from '@/components/ui/auth-shell';
+import { AuthField, AuthLink, AuthShell, PasswordField } from '@/components/ui/auth-shell';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -97,15 +97,18 @@ export default function SignInScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <AuthField
+      <PasswordField
         label="Password"
         placeholder="Enter your password"
         autoCapitalize="none"
         autoComplete="password"
-        secureTextEntry
         textContentType="password"
         value={password}
         onChangeText={setPassword}
+        returnKeyType="go"
+        onSubmitEditing={() => {
+          if (canSubmit) void handleSignIn();
+        }}
         trailing={
           <Button
             variant="ghost"

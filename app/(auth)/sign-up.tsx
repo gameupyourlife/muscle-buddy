@@ -1,4 +1,4 @@
-import { AuthField, AuthLink, AuthShell } from '@/components/ui/auth-shell';
+import { AuthField, AuthLink, AuthShell, PasswordField } from '@/components/ui/auth-shell';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -107,25 +107,28 @@ export default function SignUpScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <AuthField
+      <PasswordField
         label="Password"
         placeholder="At least 8 characters"
         autoCapitalize="none"
         autoComplete="new-password"
-        secureTextEntry
         textContentType="newPassword"
         value={password}
         onChangeText={setPassword}
+        showStrength
       />
-      <AuthField
+      <PasswordField
         label="Confirm password"
         placeholder="Re-enter your password"
         autoCapitalize="none"
         autoComplete="new-password"
-        secureTextEntry
         textContentType="newPassword"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
+        returnKeyType="go"
+        onSubmitEditing={() => {
+          if (canSubmit) void handleSignUp();
+        }}
       />
 
       {validationError ? <Banner tone="destructive" message={validationError} /> : null}

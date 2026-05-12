@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -6,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ListRow } from '@/components/ui/list-row';
 import { OptionChips } from '@/components/ui/option-chips';
+import { Progress } from '@/components/ui/progress';
 import { ListGroup, Screen, SectionHeader, Surface } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import {
@@ -22,7 +24,7 @@ import {
     PlayIcon,
 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 
 type PlanEntryInputs = Record<string, { reps: string; weight: string }>;
 
@@ -101,6 +103,19 @@ export default function TrainScreen() {
 
   const totalSets = activeSession?.sets?.length ?? 0;
 
+  const confirmComplete = () => {
+    Alert.alert(
+      'Complete workout?',
+      totalSets === 0
+        ? 'You have not logged any sets. Complete anyway?'
+        : `Finish this session (${totalSets} set${totalSets === 1 ? '' : 's'} logged) and earn XP?`,
+      [
+        { text: 'Keep training', style: 'cancel' },
+        { text: 'Complete', onPress: () => void completeSession() },
+      ],
+    );
+  };
+
   const updatePlanEntryInput = (entryId: string, field: 'reps' | 'weight', value: string) => {
     setPlanEntryInputs((current) => ({
       ...current,
@@ -114,6 +129,8 @@ export default function TrainScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: 8 }}>
+      {feedback ? <Banner tone="success" message={feedback} /> : null}
+      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
       {/* Status hero */}
       <Surface
         className={
@@ -201,7 +218,7 @@ export default function TrainScreen() {
         </Button>
       ) : (
         <Button
-          onPress={completeSession}
+          onPress={confirmComplete}
           disabled={!canCompleteSession || isCompletingSession}
           size="lg"
         >
@@ -246,7 +263,7 @@ export default function TrainScreen() {
               };
               const completedAll = loggedSets >= entry.targetSets;
               return (
-                <Surface key={entry.id}>
+                <Surface key={entry.id} className={isSuggested && !completedAll ? 'border-primary/40' : undefined}>
                   <View className="flex-row items-center gap-3">
                     <Icon
                       as={completedAll ? CheckCircle2Icon : CircleIcon}
@@ -254,17 +271,40 @@ export default function TrainScreen() {
                       className={completedAll ? 'text-success' : 'text-muted-foreground'}
                     />
                     <View className="flex-1">
-                      <Text className="text-[16px] font-semibold text-foreground">
-                        {entry.exercise.name}
-                      </Text>
+                      <View className="flex-row items-center gap-2 flex-wrap">
+                        <Text className="text-[16px] font-semibold text-foreground">
+                          {entry.exercise.name}
+                        </Text>
+                        {isSuggested && !completedAll ? (
+                          <Badge variant="default">
+                            <Text>Next up</Text>
+                          </Badge>
+                        ) : null}
+                        {completedAll ? (
+                          <Badge variant="outline">
+                            <Text>Done</Text>
+                          </Badge>
+                        ) : null}
+                      </View>
                       <Text className="text-[13px] text-muted-foreground">
                         {entry.targetSets} × {entry.targetReps}
                         {typeof entry.targetWeight === 'number' ? ` · ${entry.targetWeight} kg` : ''}
-                        {' · '}
-                        {loggedSets} logged
-                        {isSuggested && !completedAll ? ' · suggested next' : ''}
                       </Text>
                     </View>
+                  </View>
+
+                  <View className="gap-1">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-[12px] text-muted-foreground">
+                        {loggedSets} of {entry.targetSets} set{entry.targetSets === 1 ? '' : 's'}
+                      </Text>
+                      <Text className="text-[12px] font-medium text-muted-foreground">
+                        {Math.min(100, Math.round((loggedSets / Math.max(1, entry.targetSets)) * 100))}%
+                      </Text>
+                    </View>
+                    <Progress
+                      value={Math.min(100, (loggedSets / Math.max(1, entry.targetSets)) * 100)}
+                    />
                   </View>
 
                   <View className="flex-row gap-3">
@@ -364,9 +404,6 @@ export default function TrainScreen() {
           </ListGroup>
         </>
       ) : null}
-
-      {feedback ? <Banner tone="success" message={feedback} /> : null}
-      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
     </Screen>
   );
 }

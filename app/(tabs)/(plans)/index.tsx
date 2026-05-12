@@ -21,7 +21,7 @@ import {
     TrashIcon,
 } from 'lucide-react-native';
 import { useMemo } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 
 export default function PlansScreen() {
   const router = useRouter();
@@ -54,6 +54,8 @@ export default function PlansScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: 8 }}>
+      {feedback ? <Banner tone="success" message={feedback} /> : null}
+      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
       {/* Active plan card */}
       {activePlan ? (
         <Surface>
@@ -179,7 +181,20 @@ export default function PlansScreen() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onPress={() => removePlanEditorExercise(entry.key)}
+                    onPress={() => {
+                      Alert.alert(
+                        'Remove exercise?',
+                        `Remove "${exercise?.name || 'this exercise'}" from your plan?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: () => removePlanEditorExercise(entry.key),
+                          },
+                        ],
+                      );
+                    }}
                   >
                     <Icon as={TrashIcon} size={14} className="text-destructive" />
                     <Text className="text-destructive">Remove</Text>
@@ -278,9 +293,6 @@ export default function PlansScreen() {
           ))}
         </>
       ) : null}
-
-      {feedback ? <Banner tone="success" message={feedback} /> : null}
-      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
     </Screen>
   );
 }

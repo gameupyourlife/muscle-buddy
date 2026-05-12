@@ -17,6 +17,7 @@ import {
     useSocialData,
 } from '@/lib/workouts/use-social';
 import { useRouter } from 'expo-router';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import {
     CalendarPlusIcon,
     MessageCircleIcon,
@@ -27,7 +28,7 @@ import {
     UserXIcon,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 export default function BuddiesScreen() {
   const router = useRouter();
@@ -98,6 +99,15 @@ export default function BuddiesScreen() {
       onRefresh={refreshNow}
       contentContainerStyle={{ paddingTop: 8 }}
     >
+      <NativeTabs.Trigger>
+        <NativeTabs.Trigger.Badge
+          hidden={unreadCount === 0}
+        >
+          {unreadCount > 0 ? String(unreadCount) : ''}
+        </NativeTabs.Trigger.Badge>
+      </NativeTabs.Trigger>
+      {feedback ? <Banner tone="success" message={feedback} /> : null}
+      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
       {/* Buddy profile summary */}
       <Surface>
         <View className="flex-row items-center justify-between gap-2">
@@ -272,7 +282,21 @@ export default function BuddiesScreen() {
               <Button
                 variant="outline"
                 size="sm"
-                onPress={() => blockBuddyUser(activeBuddy.buddyUserId)}
+                onPress={() => {
+                  const name = activeBuddy.preview?.displayName || 'this buddy';
+                  Alert.alert(
+                    'Block this buddy?',
+                    `${name} will no longer be able to see your profile, message you, or send meetup invites.`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Block',
+                        style: 'destructive',
+                        onPress: () => void blockBuddyUser(activeBuddy.buddyUserId),
+                      },
+                    ],
+                  );
+                }}
               >
                 <Icon as={UserXIcon} size={14} className="text-destructive" />
                 <Text className="text-destructive">Block</Text>
@@ -280,7 +304,21 @@ export default function BuddiesScreen() {
               <Button
                 variant="outline"
                 size="sm"
-                onPress={() => reportBuddyUser(activeBuddy.buddyUserId, 'inappropriate')}
+                onPress={() => {
+                  Alert.alert(
+                    'Report this buddy?',
+                    'Our team will review their profile and recent interactions. They will not be notified.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Report',
+                        style: 'destructive',
+                        onPress: () =>
+                          void reportBuddyUser(activeBuddy.buddyUserId, 'inappropriate'),
+                      },
+                    ],
+                  );
+                }}
               >
                 <Icon as={ShieldAlertIcon} size={14} className="text-destructive" />
                 <Text className="text-destructive">Report</Text>
@@ -512,9 +550,6 @@ export default function BuddiesScreen() {
           />
         </Surface>
       )}
-
-      {feedback ? <Banner tone="success" message={feedback} /> : null}
-      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
     </Screen>
   );
 }

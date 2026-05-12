@@ -79,6 +79,9 @@ export default function HomeScreen() {
         }}
       />
 
+      {feedback ? <Banner tone="success" message={feedback} /> : null}
+      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
+
       {/* Hero — virtual muscle buddy */}
       <Surface padded={false} className="overflow-hidden">
         <VirtualMuscleBuddy
@@ -225,9 +228,6 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/(home)/me')}
         />
       </ListGroup>
-
-      {feedback ? <Banner tone="success" message={feedback} /> : null}
-      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
     </Screen>
   );
 }

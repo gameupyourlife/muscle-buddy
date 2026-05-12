@@ -27,7 +27,7 @@ import {
     Trash2Icon,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 
 function shiftDate(iso: string, deltaDays: number) {
   const d = new Date(`${iso}T00:00:00`);
@@ -144,6 +144,8 @@ export default function FoodScreen() {
 
   return (
     <Screen refreshing={isLoading} onRefresh={refreshNow} contentContainerStyle={{ paddingTop: 8 }}>
+      {feedback ? <Banner tone="success" message={feedback} /> : null}
+      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
       {/* Date nav */}
       <Surface>
         <View className="flex-row items-center justify-between gap-2">
@@ -304,7 +306,20 @@ export default function FoodScreen() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onPress={() => removeFoodLog(log.id)}
+                  onPress={() => {
+                    Alert.alert(
+                      'Remove this meal?',
+                      `Remove "${log.foodName}" from today's log?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Remove',
+                          style: 'destructive',
+                          onPress: () => void removeFoodLog(log.id),
+                        },
+                      ],
+                    );
+                  }}
                 >
                   <Icon as={Trash2Icon} size={16} className="text-destructive" />
                 </Button>
@@ -509,9 +524,6 @@ export default function FoodScreen() {
           </ListGroup>
         </>
       ) : null}
-
-      {feedback ? <Banner tone="success" message={feedback} /> : null}
-      {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
     </Screen>
   );
 }

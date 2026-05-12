@@ -1,9 +1,11 @@
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
+import { EyeIcon, EyeOffIcon } from 'lucide-react-native';
 import * as React from 'react';
 import {
     KeyboardAvoidingView,
@@ -128,6 +130,96 @@ export function AuthField({
         {trailing}
       </View>
       <Input {...inputProps} />
+    </View>
+  );
+}
+
+/**
+ * Password input with built-in show/hide toggle.
+ * Use anywhere a password is captured.
+ */
+export function PasswordField({
+  label,
+  trailing,
+  showStrength = false,
+  ...inputProps
+}: Omit<React.ComponentProps<typeof Input>, 'secureTextEntry'> & {
+  label: string;
+  trailing?: React.ReactNode;
+  showStrength?: boolean;
+}) {
+  const [visible, setVisible] = React.useState(false);
+  const value = typeof inputProps.value === 'string' ? inputProps.value : '';
+  return (
+    <View className="gap-1.5">
+      <View className="flex-row items-center justify-between">
+        <Label>{label}</Label>
+        {trailing}
+      </View>
+      <View className="relative">
+        <Input
+          {...inputProps}
+          secureTextEntry={!visible}
+          className={cn('pr-10', inputProps.className)}
+        />
+        <Pressable
+          onPress={() => setVisible((v) => !v)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+          className="absolute right-2 top-0 bottom-0 items-center justify-center px-1"
+        >
+          <Icon
+            as={visible ? EyeOffIcon : EyeIcon}
+            size={18}
+            className="text-muted-foreground"
+          />
+        </Pressable>
+      </View>
+      {showStrength ? <PasswordStrength password={value} /> : null}
+    </View>
+  );
+}
+
+function scorePassword(password: string) {
+  if (!password) return 0;
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
+  if (/\d/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  return Math.min(score, 4);
+}
+
+const STRENGTH_LABELS = ['Too short', 'Weak', 'Fair', 'Good', 'Strong'] as const;
+const STRENGTH_TONES = [
+  'bg-destructive',
+  'bg-destructive',
+  'bg-warning',
+  'bg-primary',
+  'bg-success',
+];
+
+export function PasswordStrength({ password }: { password: string }) {
+  if (!password) return null;
+  const score = scorePassword(password);
+  return (
+    <View className="gap-1">
+      <View className="flex-row gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            className={cn(
+              'flex-1 h-1 rounded-full',
+              i < score ? STRENGTH_TONES[score] : 'bg-surface-muted',
+            )}
+          />
+        ))}
+      </View>
+      <Text className="text-[11px] text-muted-foreground">
+        Password strength: {STRENGTH_LABELS[score]}
+      </Text>
     </View>
   );
 }
