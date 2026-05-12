@@ -1,5 +1,10 @@
 import { getApiBaseUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
+import {
+  type CharacterId,
+  type CharacterSelection,
+  toCharacterSelectionRecord,
+} from '@/lib/workouts/character';
 import { STARTER_EXERCISES } from '@/lib/workouts/starter-data';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -32,6 +37,11 @@ export type DashboardResponse = {
     level: number;
     currentStreak: number;
     longestStreak: number;
+    characterGender: CharacterId;
+    equippedHeadItem: string;
+    equippedTopItem: string;
+    equippedPantsItem: string;
+    equippedShoesItem: string;
   } | null;
   weeklyProgress: {
     completedWorkouts: number;
@@ -177,6 +187,28 @@ function getErrorMessage(error: unknown, fallback: string) {
 function getTodayWorkoutDayValue() {
   const jsDay = new Date().getDay();
   return String(jsDay === 0 ? 7 : jsDay);
+}
+
+function mergeCharacterSelectionIntoDashboard(
+  dashboard: DashboardResponse | null,
+  selection: CharacterSelection
+): DashboardResponse | null {
+  if (!dashboard) {
+    return dashboard;
+  }
+
+  const characterRecord = toCharacterSelectionRecord(selection);
+
+  return {
+    ...dashboard,
+    gamification: {
+      totalXp: dashboard.gamification?.totalXp ?? 0,
+      level: dashboard.gamification?.level ?? 1,
+      currentStreak: dashboard.gamification?.currentStreak ?? 0,
+      longestStreak: dashboard.gamification?.longestStreak ?? 0,
+      ...characterRecord,
+    },
+  };
 }
 
 export async function preloadWorkoutsData(options: PreloadWorkoutsOptions = {}) {
@@ -342,6 +374,7 @@ export function useWorkoutsData() {
   const [isCreatingCustomPlan, setIsCreatingCustomPlan] = useState(false);
   const [isStartingPlanSetup, setIsStartingPlanSetup] = useState(false);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [isSavingCharacterSelection, setIsSavingCharacterSelection] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -400,6 +433,53 @@ export function useWorkoutsData() {
     lastSyncAtRef.current = updateWorkoutsCache({ dashboard: dashboardData });
     hasLoadedOnceRef.current = true;
   }, [apiCall]);
+
+  const updateCharacterSelection = useCallback(
+    async (selection: CharacterSelection) => {
+      setIsSavingCharacterSelection(true);
+      setErrorMessage(null);
+
+      setDashboard((current) => {
+        const nextDashboard = mergeCharacterSelectionIntoDashboard(current, selection);
+
+        if (nextDashboard) {
+          lastSyncAtRef.current = updateWorkoutsCache({ dashboard: nextDashboard });
+        }
+
+        return nextDashboard;
+      });
+
+      try {
+        const response = await apiCall<{ gamification: NonNullable<DashboardResponse['gamification']> }>(
+          '/api/workouts/character',
+          {
+            method: 'PATCH',
+            body: JSON.stringify(selection),
+          }
+        );
+
+        setDashboard((current) => {
+          if (!current) {
+            return current;
+          }
+
+          const nextDashboard = {
+            ...current,
+            gamification: response.gamification,
+          };
+
+          lastSyncAtRef.current = updateWorkoutsCache({ dashboard: nextDashboard });
+          return nextDashboard;
+        });
+      } catch (error) {
+        setErrorMessage(getErrorMessage(error, 'Could not save character selection.'));
+        await refreshDashboard().catch(() => undefined);
+      } finally {
+        setIsSavingCharacterSelection(false);
+      }
+    },
+    [apiCall, refreshDashboard]
+  );
 
   const refreshSessions = useCallback(async () => {
     const sessionsResponse = await apiCall<{ sessions: Session[] }>('/api/workouts/sessions');
@@ -1167,6 +1247,7 @@ export function useWorkoutsData() {
     isCreatingCustomPlan,
     isStartingPlanSetup,
     isSavingPlan,
+    isSavingCharacterSelection,
     feedback,
     errorMessage,
     completed,
@@ -1188,6 +1269,7 @@ export function useWorkoutsData() {
     setCustomPlanWeeklyTarget,
     loadInitialData,
     refreshNow,
+    updateCharacterSelection,
     addExerciseToCustomPlan,
     removeCustomPlanExercise,
     updateCustomPlanExercise,

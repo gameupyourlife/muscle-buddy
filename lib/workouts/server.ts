@@ -11,6 +11,7 @@ import {
     workoutSessions,
     xpEvents,
 } from '@/lib/db/schema';
+import { toCharacterSelectionRecord } from '@/lib/workouts/character';
 import { WORKOUT_XP_CONFIG } from '@/lib/workouts/constants';
 import { STARTER_EXERCISES, STARTER_TEMPLATES } from '@/lib/workouts/starter-data';
 import { calculateWorkoutXp, getLevelFromXp, getWeekKey, isConsecutiveWeek } from '@/lib/workouts/utils';
@@ -370,6 +371,37 @@ export async function completeWorkoutSession(input: {
   });
 }
 
+export async function updateUserCharacterSelection(userId: string, selection: unknown) {
+  const characterRecord = toCharacterSelectionRecord(selection);
+  const now = new Date();
+  const [gamificationState] = await db
+    .insert(userGamification)
+    .values({
+      userId,
+      totalXp: 0,
+      level: 1,
+      currentStreak: 0,
+      longestStreak: 0,
+      ...characterRecord,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: userGamification.userId,
+      set: {
+        ...characterRecord,
+        updatedAt: now,
+      },
+    })
+    .returning();
+
+  return gamificationState
+    ? {
+        ...gamificationState,
+        level: getLevelFromXp(gamificationState.totalXp),
+      }
+    : gamificationState;
+}
+
 export async function getWorkoutDashboard(userId: string, timeZone?: string) {
   const activePlan = await db.query.trainingPlans.findFirst({
     where: and(eq(trainingPlans.userId, userId), eq(trainingPlans.isActive, true)),
@@ -397,10 +429,17 @@ export async function getWorkoutDashboard(userId: string, timeZone?: string) {
     }),
   ]);
 
+  const normalizedGamificationState = gamificationState
+    ? {
+        ...gamificationState,
+        level: getLevelFromXp(gamificationState.totalXp),
+      }
+    : null;
+
   return {
     weekKey,
     activePlan,
-    gamification: gamificationState,
+    gamification: normalizedGamificationState,
     weeklyProgress: weeklyState,
     recentSessions,
   };

@@ -1,12 +1,23 @@
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Icon } from '@/components/ui/icon';
+import { OptionChips } from '@/components/ui/option-chips';
 import { Progress } from '@/components/ui/progress';
 import { Text } from '@/components/ui/text';
-import { SparklesIcon } from 'lucide-react-native';
-import { useEffect, useMemo, useRef } from 'react';
-import { Animated, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Ellipse, G, Line, Path, Rect } from 'react-native-svg';
+import { CharacterModelStage } from '@/components/workouts/character-model-stage';
+import {
+  CHARACTER_ITEM_SLOTS,
+  type CharacterSelection,
+  type CharacterSlotId,
+  getCharacterItemOptions,
+  getCharacterOptions,
+  normalizeCharacterSelection,
+  resolveCharacterModel,
+} from '@/lib/workouts/character';
+import { CheckCircle2Icon, DumbbellIcon, SlidersHorizontalIcon, SparklesIcon } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 type BuddyStage = {
   label: string;
@@ -20,6 +31,9 @@ export type VirtualMuscleBuddyProps = {
   currentStreak: number;
   progressToNextLevel: number;
   xpToNextLevel: number | null;
+  characterSelection: CharacterSelection;
+  isSavingCharacterSelection?: boolean;
+  onCharacterSelectionChange: (selection: CharacterSelection) => void;
 };
 
 const STAGES: BuddyStage[] = [
@@ -38,118 +52,52 @@ const STAGES: BuddyStage[] = [
     subtitle: 'Strength and habits are locked in.',
     pepTalk: 'Stay patient, stay strong.',
   },
-  {
-    label: 'Shred Lord',
-    subtitle: 'Your buddy is getting seriously jacked.',
-    pepTalk: 'Control the reps, own the grind.',
-  },
-  {
-    label: 'Legendary Bro',
-    subtitle: 'Peak buff mode unlocked.',
-    pepTalk: 'You are the spotter now.',
-  },
 ];
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function getStageIndex(level: number) {
-  const normalizedLevel = Math.max(1, level);
-  if (normalizedLevel <= 3) {
+  if (level <= 1) {
     return 0;
   }
 
-  if (normalizedLevel <= 6) {
+  if (level <= 2) {
     return 1;
   }
 
-  if (normalizedLevel <= 10) {
-    return 2;
-  }
-
-  if (normalizedLevel <= 15) {
-    return 3;
-  }
-
-  return 4;
+  return 2;
 }
 
-function BuddyIllustration({ level, width }: { level: number; width: number }) {
-  const stageIndex = getStageIndex(level);
-  const muscleScale = clamp(0.82 + level * 0.022, 0.82, 1.35);
-  const illustrationHeight = Math.round((width / 220) * 240);
-  const shoulderRx = 16 * muscleScale;
-  const torsoWidth = 32 * muscleScale;
-  const armRadius = 8 * muscleScale;
-  const legWidth = 8 * muscleScale;
-  const hasAbs = stageIndex >= 2;
-  const hasSparkles = stageIndex >= 3;
-  const hasAura = stageIndex >= 4;
-  const eyeOffset = stageIndex >= 3 ? 0 : 1;
+function CharacterSlotPicker({
+  slotId,
+  value,
+  onValueChange,
+}: {
+  slotId: CharacterSlotId;
+  value: string;
+  onValueChange: (value: string) => void;
+}) {
+  const slot = CHARACTER_ITEM_SLOTS.find((entry) => entry.id === slotId);
+  const options = getCharacterItemOptions(slotId).map((option) => ({
+    value: option.id,
+    label: option.label,
+  }));
+
+  if (!slot) {
+    return null;
+  }
 
   return (
-    <Svg width={width} height={illustrationHeight} viewBox="0 0 220 240" fill="none">
-      <Ellipse cx={110} cy={218} rx={56} ry={12} fill="hsl(214 24% 82%)" opacity={0.65} />
-
-      <Circle cx={110} cy={48} r={24} fill="hsl(34 80% 74%)" />
-      <Circle cx={100} cy={46 + eyeOffset} r={2.5} fill="hsl(220 35% 16%)" />
-      <Circle cx={120} cy={46 + eyeOffset} r={2.5} fill="hsl(220 35% 16%)" />
-      <Path
-        d={
-          stageIndex >= 2
-            ? 'M100 58 C105 64, 115 64, 120 58'
-            : 'M101 60 C106 56, 114 56, 119 60'
-        }
-        stroke="hsl(220 35% 16%)"
-        strokeWidth={2.2}
-        strokeLinecap="round"
+    <View className="gap-2">
+      <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {slot.label}
+      </Text>
+      <OptionChips
+        items={options}
+        value={value}
+        size="sm"
+        layout="wrap"
+        onValueChange={onValueChange}
       />
-
-      <G>
-        <Ellipse cx={110} cy={82} rx={shoulderRx} ry={11} fill="hsl(16 77% 53%)" />
-        <Rect
-          x={110 - torsoWidth / 2}
-          y={84}
-          width={torsoWidth}
-          height={58}
-          rx={16}
-          fill="hsl(16 80% 56%)"
-        />
-
-        <Circle cx={74} cy={106} r={armRadius} fill="hsl(16 77% 53%)" />
-        <Circle cx={146} cy={106} r={armRadius} fill="hsl(16 77% 53%)" />
-
-        <Rect x={82} y={95} width={10} height={42} rx={6} fill="hsl(16 75% 50%)" />
-        <Rect x={128} y={95} width={10} height={42} rx={6} fill="hsl(16 75% 50%)" />
-
-        {hasAbs ? (
-          <G opacity={0.75}>
-            <Line x1={110} y1={96} x2={110} y2={136} stroke="hsl(0 0% 100%)" strokeWidth={1.8} />
-            <Line x1={98} y1={106} x2={122} y2={106} stroke="hsl(0 0% 100%)" strokeWidth={1.5} />
-            <Line x1={98} y1={118} x2={122} y2={118} stroke="hsl(0 0% 100%)" strokeWidth={1.5} />
-            <Line x1={98} y1={130} x2={122} y2={130} stroke="hsl(0 0% 100%)" strokeWidth={1.5} />
-          </G>
-        ) : null}
-      </G>
-
-      <Rect x={96} y={142} width={28} height={17} rx={6} fill="hsl(214 24% 30%)" />
-      <Rect x={90} y={157} width={legWidth} height={42} rx={5} fill="hsl(215 82% 43%)" />
-      <Rect x={220 - 90 - legWidth} y={157} width={legWidth} height={42} rx={5} fill="hsl(215 82% 43%)" />
-      <Rect x={86} y={195} width={16} height={8} rx={3} fill="hsl(220 35% 14%)" />
-      <Rect x={118} y={195} width={16} height={8} rx={3} fill="hsl(220 35% 14%)" />
-
-      {hasSparkles ? (
-        <G>
-          <Path d="M42 62 L46 72 L56 76 L46 80 L42 90 L38 80 L28 76 L38 72 Z" fill="hsl(36 92% 56%)" opacity={0.9} />
-          <Path d="M176 82 L179 90 L188 93 L179 96 L176 104 L173 96 L164 93 L173 90 Z" fill="hsl(36 92% 56%)" opacity={0.9} />
-        </G>
-      ) : null}
-
-      {hasAura ? (
-        <Circle cx={110} cy={112} r={88} stroke="hsl(36 92% 56%)" strokeWidth={3} opacity={0.35} />
-      ) : null}
-    </Svg>
+    </View>
   );
 }
 
@@ -159,31 +107,16 @@ export function VirtualMuscleBuddy({
   currentStreak,
   progressToNextLevel,
   xpToNextLevel,
+  characterSelection,
+  isSavingCharacterSelection = false,
+  onCharacterSelectionChange,
 }: VirtualMuscleBuddyProps) {
-  const { width } = useWindowDimensions();
-  const stage = STAGES[getStageIndex(level)];
-  const idleLift = useRef(new Animated.Value(0)).current;
-  const illustrationWidth = Math.min(220, Math.max(160, width - 170));
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(idleLift, {
-          toValue: -7,
-          duration: 1300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(idleLift, {
-          toValue: 0,
-          duration: 1300,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    animation.start();
-    return () => animation.stop();
-  }, [idleLift]);
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const model = useMemo(() => resolveCharacterModel(characterSelection, level), [characterSelection, level]);
+  const stage = STAGES[getStageIndex(model.level)];
+  const modelLabel = `${model.characterLabel} - ${model.itemLabel}`;
+  const characterOptions = useMemo(getCharacterOptions, []);
+  const normalizedSelection = model.selection;
 
   const nextLevelSummary = useMemo(() => {
     if (xpToNextLevel === null) {
@@ -193,50 +126,112 @@ export function VirtualMuscleBuddy({
     return `${xpToNextLevel} XP to level up`;
   }, [xpToNextLevel]);
 
+  const updateCharacter = (characterId: string) => {
+    onCharacterSelectionChange(
+      normalizeCharacterSelection({
+        characterId,
+        equipment: normalizedSelection.equipment,
+      })
+    );
+  };
+
+  const updateEquipment = (slotId: CharacterSlotId, itemId: string) => {
+    onCharacterSelectionChange(
+      normalizeCharacterSelection({
+        characterId: normalizedSelection.characterId,
+        equipment: {
+          ...normalizedSelection.equipment,
+          [slotId]: itemId,
+        },
+      })
+    );
+  };
+
   return (
-    <Card className="overflow-hidden border-primary/35 bg-card">
-      <View className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-primary/10" />
-      <View className="absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-accent/35" />
+    <View className="gap-4 p-4">
+      <View className="gap-2">
+        <Text className="text-2xl font-semibold text-foreground">Your Virtual Muscle Buddy</Text>
+        <Text className="text-sm text-muted-foreground">
+          Train together. Feed it XP. Watch it evolve.
+        </Text>
+      </View>
 
-      <CardHeader className="gap-2 pb-3">
-        <CardTitle className="text-2xl">Your Virtual Muscle Buddy</CardTitle>
-        <CardDescription>Train together. Feed it XP. Watch it evolve.</CardDescription>
-      </CardHeader>
+      <CharacterModelStage assetId={model.assetId} modelLabel={modelLabel} level={model.level} />
 
-      <CardContent className="gap-4 pb-6">
-        <View className="items-center justify-center rounded-2xl border border-border/70 bg-muted/45 py-4">
-          <Animated.View style={{ transform: [{ translateY: idleLift }] }}>
-            <BuddyIllustration level={level} width={illustrationWidth} />
-          </Animated.View>
+      <View className="flex-row flex-wrap items-center gap-2">
+        <Badge>
+          <Icon as={SparklesIcon} size={12} className="text-primary-foreground" />
+          <Text>{stage.label}</Text>
+        </Badge>
+        <Badge variant="secondary">
+          <Text>Level {model.level}</Text>
+        </Badge>
+        <Badge variant="outline">
+          <Text>{model.characterLabel}</Text>
+        </Badge>
+        <Badge variant="outline">
+          <Text>{currentStreak} week streak</Text>
+        </Badge>
+      </View>
+
+      <View className="gap-1">
+        <Text className="text-sm text-muted-foreground">{stage.subtitle}</Text>
+        <Text className="text-sm font-semibold text-foreground">{stage.pepTalk}</Text>
+      </View>
+
+      <View className="gap-2 rounded-xl border border-border/70 bg-background/65 p-3">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-xs text-muted-foreground">Total XP</Text>
+          <Text className="text-sm font-semibold">{totalXp}</Text>
         </View>
+        <Progress value={progressToNextLevel} className="h-2.5" />
+        <Text className="text-xs text-muted-foreground">{nextLevelSummary}</Text>
+      </View>
 
-        <View className="flex-row flex-wrap items-center gap-2">
-          <Badge>
-            <Icon as={SparklesIcon} size={12} className="text-primary-foreground" />
-            <Text>{stage.label}</Text>
-          </Badge>
-          <Badge variant="secondary">
-            <Text>Level {level}</Text>
-          </Badge>
-          <Badge variant="outline">
-            <Text>{currentStreak} week streak</Text>
-          </Badge>
-        </View>
+      <Collapsible open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="w-full">
+            <Icon as={SlidersHorizontalIcon} size={16} className="text-foreground" />
+            <Text>{isCustomizeOpen ? 'Close Customize Menu' : 'Customize Character'}</Text>
+            {isSavingCharacterSelection ? <ActivityIndicator size="small" /> : null}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <View className="mt-3 gap-4 rounded-xl border border-border/70 bg-background/65 p-3">
+            <View className="gap-2">
+              <View className="flex-row items-center gap-2">
+                <Icon as={DumbbellIcon} size={14} className="text-muted-foreground" />
+                <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Character
+                </Text>
+              </View>
+              <OptionChips
+                items={characterOptions}
+                value={normalizedSelection.characterId}
+                layout="wrap"
+                size="sm"
+                onValueChange={updateCharacter}
+              />
+            </View>
 
-        <View className="gap-1">
-          <Text className="text-sm text-muted-foreground">{stage.subtitle}</Text>
-          <Text className="text-sm font-semibold text-foreground">{stage.pepTalk}</Text>
-        </View>
+            {CHARACTER_ITEM_SLOTS.map((slot) => (
+              <CharacterSlotPicker
+                key={slot.id}
+                slotId={slot.id}
+                value={normalizedSelection.equipment[slot.id]}
+                onValueChange={(itemId) => updateEquipment(slot.id, itemId)}
+              />
+            ))}
 
-        <View className="gap-2 rounded-xl border border-border/70 bg-background/65 p-3">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-muted-foreground">Total XP</Text>
-            <Text className="text-sm font-semibold">{totalXp}</Text>
+            <View className="flex-row items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
+              <Icon as={CheckCircle2Icon} size={14} className="text-primary" />
+              <Text className="text-xs text-primary">
+                Equipped: {model.characterLabel}, {model.itemLabel}
+              </Text>
+            </View>
           </View>
-          <Progress value={progressToNextLevel} className="h-2.5" />
-          <Text className="text-xs text-muted-foreground">{nextLevelSummary}</Text>
-        </View>
-      </CardContent>
-    </Card>
+        </CollapsibleContent>
+      </Collapsible>
+    </View>
   );
 }

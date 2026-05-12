@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/text';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { VirtualMuscleBuddy } from '@/components/workouts/virtual-muscle-buddy';
 import { authClient } from '@/lib/auth-client';
+import { getCharacterSelectionFromGamification } from '@/lib/workouts/character';
 import { LEVEL_THRESHOLDS } from '@/lib/workouts/constants';
 import { useWorkoutsData } from '@/lib/workouts/use-workouts';
 import { Stack, useRouter } from 'expo-router';
@@ -38,11 +39,14 @@ export default function HomeScreen() {
     errorMessage,
     feedback,
     refreshNow,
+    isSavingCharacterSelection,
+    updateCharacterSelection,
   } = useWorkoutsData();
 
   const level = dashboard?.gamification?.level ?? 1;
   const totalXp = dashboard?.gamification?.totalXp ?? 0;
   const currentStreak = dashboard?.gamification?.currentStreak ?? 0;
+  const characterSelection = getCharacterSelectionFromGamification(dashboard?.gamification);
 
   const currentLevelThreshold = LEVEL_THRESHOLDS[level - 1] ?? 0;
   const nextLevelThreshold = LEVEL_THRESHOLDS[level] ?? null;
@@ -90,6 +94,9 @@ export default function HomeScreen() {
           currentStreak={currentStreak}
           progressToNextLevel={progressToNextLevel}
           xpToNextLevel={xpToNextLevel}
+          characterSelection={characterSelection}
+          isSavingCharacterSelection={isSavingCharacterSelection}
+          onCharacterSelectionChange={updateCharacterSelection}
         />
       </Surface>
 
