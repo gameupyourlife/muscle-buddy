@@ -20,8 +20,8 @@ export const NUTRITION_MEAL_TYPES = [
 
 export const LEVEL_THRESHOLDS = [
   0,
-  200,
-  450,
+  1000,
+  3500,
 ] as const;
 
 export const WEEKDAY_INDEX = {
