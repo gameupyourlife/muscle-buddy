@@ -18,13 +18,8 @@ import {
 import {
   CheckCircle2Icon,
   DumbbellIcon,
-  FlameIcon,
-  MedalIcon,
-  ShirtIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
-  TrophyIcon,
-  ZapIcon,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -40,6 +35,8 @@ export type VirtualMuscleBuddyProps = {
   totalXp: number;
   currentStreak: number;
   progressToNextLevel: number;
+  xpIntoCurrentLevel: number;
+  xpRequiredForLevel: number;
   xpToNextLevel: number | null;
   characterSelection: CharacterSelection;
   isSavingCharacterSelection?: boolean;
@@ -74,42 +71,6 @@ function getStageIndex(level: number) {
   }
 
   return 2;
-}
-
-function BuddyMetric({
-  label,
-  value,
-  icon,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  icon: typeof SparklesIcon;
-  tone?: 'default' | 'primary' | 'accent';
-}) {
-  const toneClass = {
-    default: 'bg-muted/60 border-border/70',
-    primary: 'bg-primary/10 border-primary/20',
-    accent: 'bg-foreground/[0.04] border-border/70',
-  }[tone];
-
-  const iconClass = tone === 'primary' ? 'text-primary' : 'text-muted-foreground';
-
-  return (
-    <View
-      className={`min-w-[96px] flex-1 gap-2 rounded-xl border px-3 py-3 ${toneClass}`}
-      style={{ borderCurve: 'continuous' }}>
-      <View className="flex-row items-center gap-2">
-        <Icon as={icon} size={14} className={iconClass} />
-        <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </Text>
-      </View>
-      <Text className="text-lg font-bold text-foreground" style={{ fontVariant: ['tabular-nums'] }}>
-        {value}
-      </Text>
-    </View>
-  );
 }
 
 function CharacterSlotPicker({
@@ -152,6 +113,8 @@ export function VirtualMuscleBuddy({
   totalXp,
   currentStreak,
   progressToNextLevel,
+  xpIntoCurrentLevel,
+  xpRequiredForLevel,
   xpToNextLevel,
   characterSelection,
   isSavingCharacterSelection = false,
@@ -166,14 +129,6 @@ export function VirtualMuscleBuddy({
   const modelLabel = `${model.characterLabel} - ${model.itemLabel}`;
   const characterOptions = useMemo(getCharacterOptions, []);
   const normalizedSelection = model.selection;
-
-  const nextLevelSummary = useMemo(() => {
-    if (xpToNextLevel === null) {
-      return 'Max level reached. Keep stacking workout XP.';
-    }
-
-    return `${xpToNextLevel} XP to level up`;
-  }, [xpToNextLevel]);
 
   const updateCharacter = (characterId: string) => {
     onCharacterSelectionChange(
@@ -197,12 +152,11 @@ export function VirtualMuscleBuddy({
   };
 
   return (
-    <View className="gap-4 p-4">
+    <View className="gap-4">
       <View
-        className="overflow-hidden rounded-2xl border border-border/70 bg-card"
+        className="overflow-hidden bg-transparent"
         style={{
           borderCurve: 'continuous',
-          boxShadow: '0 18px 44px rgba(15, 23, 42, 0.13)',
         }}>
         <View className="gap-4 p-4 pb-3">
           <View className="flex-row items-start justify-between gap-3">
@@ -235,67 +189,38 @@ export function VirtualMuscleBuddy({
             assetId={model.assetId}
             modelLabel={modelLabel}
             level={model.level}
-            height={360}
-            className="h-[360px] overflow-hidden border-y border-border/60 bg-background"
+            xpIntoCurrentLevel={xpIntoCurrentLevel}
+            xpRequiredForLevel={xpRequiredForLevel}
+            progressToNextLevel={progressToNextLevel}
+            height={520}
+            className="h-[520px] overflow-hidden bg-[#f6f8fb]"
           />
-
-          <View className="absolute left-3 right-3 top-3 flex-row flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="bg-background/85">
-              <Icon as={TrophyIcon} size={12} className="text-foreground" />
-              <Text>Level {model.level}</Text>
-            </Badge>
-            <Badge variant="outline" className="border-border/70 bg-background/85">
-              <Icon as={ShirtIcon} size={12} className="text-muted-foreground" />
-              <Text>{model.characterLabel}</Text>
-            </Badge>
-          </View>
-
           <View
-            className="absolute bottom-3 left-3 right-3 gap-2 rounded-xl border border-border/70 bg-background/90 p-3"
-            style={{ borderCurve: 'continuous' }}>
+            className="absolute left-4 top-4 w-[170px] gap-2 rounded-2xl border border-white/70 bg-background/80 px-3 py-3"
+            style={{
+              borderCurve: 'continuous',
+              boxShadow: '0 14px 32px rgba(15, 23, 42, 0.16)',
+            }}>
             <View className="flex-row items-center justify-between gap-3">
-              <View className="min-w-0 flex-1">
-                <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Equipped
-                </Text>
-                <Text className="text-sm font-semibold text-foreground">{model.itemLabel}</Text>
-              </View>
-              <Badge variant="outline">
-                <Text>{currentStreak} week streak</Text>
-              </Badge>
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Level
+              </Text>
+              <Text
+                className="text-base font-black text-primary"
+                style={{ fontVariant: ['tabular-nums'] }}>
+                {model.level}
+              </Text>
             </View>
+            <Progress value={progressToNextLevel} className="h-2" />
+            <Text
+              className="text-xs font-bold text-foreground"
+              style={{ fontVariant: ['tabular-nums'] }}>
+              {Math.round(xpIntoCurrentLevel)} / {Math.round(xpRequiredForLevel)} XP
+            </Text>
           </View>
         </View>
 
         <View className="gap-4 p-4 pt-3">
-          <View className="flex-row flex-wrap gap-2">
-            <BuddyMetric label="Level" value={`${model.level}`} icon={MedalIcon} tone="primary" />
-            <BuddyMetric label="Total XP" value={`${totalXp}`} icon={ZapIcon} />
-            <BuddyMetric
-              label="Streak"
-              value={`${currentStreak}w`}
-              icon={FlameIcon}
-              tone="accent"
-            />
-          </View>
-
-          <View
-            className="gap-3 rounded-xl border border-border/70 bg-background/70 p-3"
-            style={{ borderCurve: 'continuous' }}>
-            <View className="flex-row items-center justify-between gap-3">
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-sm font-semibold text-foreground">Next evolution</Text>
-                <Text className="text-xs text-muted-foreground">{nextLevelSummary}</Text>
-              </View>
-              <Text
-                className="text-sm font-bold text-primary"
-                style={{ fontVariant: ['tabular-nums'] }}>
-                {Math.round(progressToNextLevel)}%
-              </Text>
-            </View>
-            <Progress value={progressToNextLevel} className="h-3" />
-          </View>
-
           <View className="rounded-xl bg-primary/10 px-3 py-3">
             <Text className="text-sm font-semibold text-foreground">{stage.pepTalk}</Text>
             <Text className="mt-1 text-xs leading-5 text-muted-foreground">{stage.subtitle}</Text>
@@ -303,7 +228,7 @@ export function VirtualMuscleBuddy({
         </View>
       </View>
 
-      <Collapsible open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
+      <Collapsible open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen} className="px-4">
         <CollapsibleTrigger asChild>
           <Button variant={isCustomizeOpen ? 'secondary' : 'outline'} className="w-full">
             <Icon as={SlidersHorizontalIcon} size={16} className="text-foreground" />

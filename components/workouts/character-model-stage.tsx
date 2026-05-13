@@ -9,6 +9,10 @@ type CharacterModelStageProps = {
   assetId: CharacterModelAssetId;
   modelLabel: string;
   level: number;
+  xpIntoCurrentLevel: number;
+  xpRequiredForLevel: number;
+  progressToNextLevel: number;
+  appearance?: 'light' | 'dark';
   className?: string;
   height?: number;
 };
@@ -17,13 +21,17 @@ export function CharacterModelStage({
   assetId,
   modelLabel,
   level,
+  xpIntoCurrentLevel,
+  xpRequiredForLevel,
+  progressToNextLevel,
+  appearance: appearanceOverride,
   className,
   height = 320,
 }: CharacterModelStageProps) {
   const [modelUri, setModelUri] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const colorScheme = useColorScheme();
-  const appearance = colorScheme === 'dark' ? 'dark' : 'light';
+  const appearance = appearanceOverride ?? (colorScheme === 'dark' ? 'dark' : 'light');
 
   useEffect(() => {
     let isMounted = true;
@@ -61,6 +69,9 @@ export function CharacterModelStage({
           modelUri={modelUri}
           modelLabel={modelLabel}
           level={level}
+          xpIntoCurrentLevel={xpIntoCurrentLevel}
+          xpRequiredForLevel={xpRequiredForLevel}
+          progressToNextLevel={progressToNextLevel}
           appearance={appearance}
           dom={{
             scrollEnabled: false,

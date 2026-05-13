@@ -9,42 +9,49 @@ type CharacterViewerCanvasProps = {
   modelUri: string;
   modelLabel: string;
   level: number;
+  xpIntoCurrentLevel: number;
+  xpRequiredForLevel: number;
+  progressToNextLevel: number;
   appearance?: 'light' | 'dark';
   dom?: import('expo/dom').DOMProps;
 };
 
 const VIEWER_PALETTES = {
   light: {
-    scene: '#ffffff',
-    floor: '#c1ccd9',
-    floorDeep: '#aebac8',
-    seam: 'rgba(137, 148, 166, 0.22)',
-    shadow: 'rgba(30, 41, 59, 0.16)',
-    ring: '#d6deeb',
+    scene: '#f6f8fb',
+    floor: '#edf2f7',
+    floorDeep: '#dfe7f0',
+    seam: 'rgba(100, 116, 139, 0.1)',
+    shadow: 'rgba(30, 41, 59, 0.1)',
+    ring: '#e7edf5',
     text: '#1b2430',
     textMuted: 'rgba(27, 36, 48, 0.72)',
     overlayBackground: 'rgba(255, 255, 255, 0.86)',
     error: '#b42318',
     hemisphereSky: '#ffffff',
-    hemisphereGround: '#cfd7e3',
+    hemisphereGround: '#e4ebf3',
     keyLight: '#ffffff',
-    fillLight: '#d7def6',
-    wall: '#cdd6e2',
-    wallPanel: '#b9c4d2',
-    mat: '#b2bfcd',
-    floorSpeckle: '#909cac',
-    floorGroove: '#8d99a8',
-    metal: '#606b79',
-    accent: '#ef4444',
+    fillLight: '#e8eefb',
+    wall: '#f3f6fa',
+    wallPanel: '#e8eef5',
+    mat: '#e5ebf3',
+    floorSpeckle: '#c7d1dd',
+    floorGroove: '#d4dde8',
+    metal: '#7f8b99',
+    accent: '#4ecdc4',
+    warmAccent: '#f2b8a6',
+    plant: '#68b684',
     mirror: '#9caec3',
-    bannerBackground: '#111827',
-    bannerText: '#ffffff',
+    neon: '#2f8cff',
+    neonSoft: 'rgba(47, 140, 255, 0.46)',
+    bannerBackground: '#06101c',
+    bannerText: '#c8e9ff',
   },
   dark: {
-    scene: '#141414',
-    floor: '#111111',
-    floorDeep: '#171717',
-    seam: 'rgba(255, 255, 255, 0.12)',
+    scene: '#101419',
+    floor: '#151b22',
+    floorDeep: '#1b222b',
+    seam: 'rgba(226, 232, 240, 0.1)',
     shadow: 'rgba(0, 0, 0, 0.34)',
     ring: '#343945',
     text: '#f8fafc',
@@ -52,19 +59,23 @@ const VIEWER_PALETTES = {
     overlayBackground: 'rgba(20, 20, 20, 0.82)',
     error: '#fecaca',
     hemisphereSky: '#f8fafc',
-    hemisphereGround: '#242424',
+    hemisphereGround: '#222a33',
     keyLight: '#ffffff',
-    fillLight: '#667399',
-    wall: '#0b0b0b',
-    wallPanel: '#141414',
-    mat: '#1d1d1d',
-    floorSpeckle: '#262626',
-    floorGroove: '#060606',
-    metal: '#545d68',
+    fillLight: '#536b91',
+    wall: '#141a21',
+    wallPanel: '#1e2630',
+    mat: '#202936',
+    floorSpeckle: '#303a46',
+    floorGroove: '#0f141a',
+    metal: '#66717f',
     accent: '#f87171',
+    warmAccent: '#f4a896',
+    plant: '#65a978',
     mirror: '#1e2938',
-    bannerBackground: '#f8fafc',
-    bannerText: '#111827',
+    neon: '#2f8cff',
+    neonSoft: 'rgba(47, 140, 255, 0.52)',
+    bannerBackground: '#050d19',
+    bannerText: '#d7efff',
   },
 } as const;
 
@@ -201,24 +212,45 @@ function createBannerTexture(palette: ViewerPalette) {
     return null;
   }
 
-  context.fillStyle = palette.bannerBackground;
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradient.addColorStop(0, palette.bannerBackground);
+  gradient.addColorStop(0.58, '#07152a');
+  gradient.addColorStop(1, '#0b2344');
+  context.fillStyle = gradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = palette.accent;
-  context.fillRect(0, canvas.height - 30, canvas.width, 30);
-  context.fillRect(0, 0, 18, canvas.height);
+  context.strokeStyle = palette.neon;
+  context.lineWidth = 8;
+  context.shadowColor = palette.neon;
+  context.shadowBlur = 34;
+  context.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+  context.strokeStyle = 'rgba(125, 197, 255, 0.56)';
+  context.lineWidth = 3;
+  context.shadowBlur = 18;
+  context.strokeRect(34, 34, canvas.width - 68, canvas.height - 68);
 
   context.font =
-    '800 88px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    '900 58px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
+  context.shadowColor = palette.neon;
+  context.shadowBlur = 44;
   context.fillStyle = palette.bannerText;
-  context.fillText('MuscleBuddy', canvas.width / 2, canvas.height / 2 - 2);
+  context.fillText('THE MORE YOU GIVE', canvas.width / 2, canvas.height / 2 - 34);
+  context.fillText('THE MORE YOU GET', canvas.width / 2, canvas.height / 2 + 38);
 
-  context.font =
-    '600 24px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  context.fillStyle = palette.accent;
-  context.fillText('TRAIN SMARTER', canvas.width / 2, canvas.height / 2 + 66);
+  context.shadowBlur = 14;
+  context.strokeStyle = '#5ab0ff';
+  context.lineWidth = 3;
+  context.strokeText('THE MORE YOU GIVE', canvas.width / 2, canvas.height / 2 - 34);
+  context.strokeText('THE MORE YOU GET', canvas.width / 2, canvas.height / 2 + 38);
+
+  context.shadowBlur = 0;
+  context.fillStyle = palette.neonSoft;
+  context.fillRect(72, canvas.height - 42, canvas.width - 144, 5);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -308,26 +340,10 @@ function addGymEnvironment(scene: THREE.Scene, palette: ViewerPalette) {
 
   const rubberFloorTexture = createRubberFloorTexture(palette);
   const bannerTexture = createBannerTexture(palette);
-
   const floorGrooveMaterial = new THREE.MeshStandardMaterial({
     color: palette.floorGroove,
     roughness: 0.9,
     metalness: 0.01,
-  });
-  const matMaterial = new THREE.MeshStandardMaterial({
-    color: palette.mat,
-    roughness: 0.86,
-    metalness: 0.01,
-  });
-  const wallMaterial = new THREE.MeshStandardMaterial({
-    color: palette.wall,
-    roughness: 0.72,
-    metalness: 0.02,
-  });
-  const panelMaterial = new THREE.MeshStandardMaterial({
-    color: palette.wallPanel,
-    roughness: 0.8,
-    metalness: 0.02,
   });
   const metalMaterial = new THREE.MeshStandardMaterial({
     color: palette.metal,
@@ -339,19 +355,6 @@ function addGymEnvironment(scene: THREE.Scene, palette: ViewerPalette) {
     roughness: 0.78,
     metalness: 0.04,
   });
-  const accentMaterial = new THREE.MeshStandardMaterial({
-    color: palette.accent,
-    roughness: 0.58,
-    metalness: 0.08,
-  });
-  const mirrorMaterial = new THREE.MeshStandardMaterial({
-    color: palette.mirror,
-    transparent: true,
-    opacity: 0.26,
-    roughness: 0.18,
-    metalness: 0.28,
-  });
-
   const floor = addBox(
     environment,
     [12.4, 0.12, 11.2],
@@ -363,39 +366,10 @@ function addGymEnvironment(scene: THREE.Scene, palette: ViewerPalette) {
   addRubberFloorTiles(environment, palette, rubberFloorTexture);
   rubberFloorTexture?.dispose();
 
-  addBox(environment, [12.4, 4.55, 0.16], [0, 2.08, -5.52], wallMaterial, false, true);
-  addBox(environment, [0.16, 4.55, 11.2], [-6.2, 2.08, 0], wallMaterial, false, true);
-  addBox(environment, [0.16, 4.55, 11.2], [6.2, 2.08, 0], wallMaterial, false, true);
-  addBox(environment, [12.4, 0.16, 11.2], [0, 4.32, 0], wallMaterial, false, true);
-
-  addBox(environment, [2.8, 1.3, 0.04], [-2.8, 2.22, -5.41], mirrorMaterial, false, false);
-  addBox(environment, [2.8, 1.3, 0.04], [0.18, 2.22, -5.41], mirrorMaterial, false, false);
-  addBox(environment, [2.8, 1.3, 0.04], [3.16, 2.22, -5.41], mirrorMaterial, false, false);
-  addBox(environment, [10.4, 0.08, 0.08], [0, 2.98, -5.34], metalMaterial, false, false);
-  addBox(environment, [10.4, 0.08, 0.08], [0, 1.45, -5.34], metalMaterial, false, false);
-
-  if (bannerTexture) {
-    const banner = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.5, 1.38),
-      new THREE.MeshStandardMaterial({
-        map: bannerTexture,
-        roughness: 0.44,
-        metalness: 0.04,
-      })
-    );
-    banner.position.set(0.18, 3.72, -5.33);
-    banner.castShadow = false;
-    banner.receiveShadow = false;
-    environment.add(banner);
-  }
-
-  addBox(environment, [10.4, 0.16, 0.12], [0, 0.88, -5.33], panelMaterial, false, true);
-  addBox(environment, [1.4, 0.16, 0.1], [-4.6, 0.94, -5.23], accentMaterial, false, false);
-  addBox(environment, [1.4, 0.16, 0.1], [4.6, 0.94, -5.23], accentMaterial, false, false);
-
   const bench = new THREE.Group();
-  bench.position.set(3.95, 0.05, -0.65);
-  bench.rotation.y = -0.32;
+  bench.position.set(2.28, 0.05, -0.42);
+  bench.rotation.y = -0.22;
+  bench.scale.setScalar(1.24);
   environment.add(bench);
   addBox(bench, [1.65, 0.18, 0.46], [0, 0.42, 0], rubberMaterial, true, true);
   addBox(bench, [0.12, 0.52, 0.12], [-0.62, 0.16, -0.12], metalMaterial, true, true);
@@ -403,8 +377,9 @@ function addGymEnvironment(scene: THREE.Scene, palette: ViewerPalette) {
   addBox(bench, [1.95, 0.08, 0.12], [0, 0.08, 0], metalMaterial, true, true);
 
   const rack = new THREE.Group();
-  rack.position.set(-4.45, 0.04, -0.65);
-  rack.rotation.y = 0.24;
+  rack.position.set(-2.42, 0.04, -0.48);
+  rack.rotation.y = 0.18;
+  rack.scale.setScalar(1.18);
   environment.add(rack);
   addBox(rack, [0.12, 1.62, 0.12], [-0.72, 0.76, 0], metalMaterial, true, true);
   addBox(rack, [0.12, 1.62, 0.12], [0.72, 0.76, 0], metalMaterial, true, true);
@@ -417,12 +392,47 @@ function addGymEnvironment(scene: THREE.Scene, palette: ViewerPalette) {
     addDumbbell(rack, [0.42, y, 0.18], rubberMaterial, metalMaterial, 0.2 + i * 0.025);
   }
 
+  if (bannerTexture) {
+    const signGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.8, 1.36),
+      new THREE.MeshBasicMaterial({
+        color: palette.neon,
+        transparent: true,
+        opacity: 0.16,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    signGlow.position.set(2.86, 2.16, -2.72);
+    signGlow.rotation.y = -0.28;
+    environment.add(signGlow);
+
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.28, 1.06),
+      new THREE.MeshBasicMaterial({
+        map: bannerTexture,
+        transparent: true,
+        opacity: 1,
+        toneMapped: false,
+      })
+    );
+    sign.position.set(2.86, 2.16, -2.7);
+    sign.rotation.y = -0.28;
+    sign.castShadow = false;
+    sign.receiveShadow = false;
+    environment.add(sign);
+
+    const signLight = new THREE.PointLight(palette.neon, 3.4, 4.8, 1.8);
+    signLight.position.set(2.66, 2.18, -2.22);
+    environment.add(signLight);
+  }
+
   const halo = new THREE.Mesh(
     new THREE.RingGeometry(2.4, 4.8, 96),
     new THREE.MeshBasicMaterial({
       color: palette.ring,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0,
       side: THREE.DoubleSide,
     })
   );
@@ -499,10 +509,10 @@ function frameModelInScene(
   halo.scale.setScalar(Math.max(1.2, maxDimension * 0.7));
 
   controls.target.set(0, size.y * 0.47, 0);
-  controls.minDistance = Math.max(1.8, maxDimension * 0.85);
-  controls.maxDistance = Math.max(8, maxDimension * 4);
+  controls.minDistance = Math.max(2.5, maxDimension * 1.2);
+  controls.maxDistance = Math.max(10, maxDimension * 4.8);
 
-  camera.position.set(maxDimension * 0.3, size.y * 0.5, maxDimension * 1.56);
+  camera.position.set(maxDimension * 0.42, size.y * 0.54, maxDimension * 2.12);
   camera.near = 0.1;
   camera.far = 100;
   camera.updateProjectionMatrix();
@@ -513,6 +523,9 @@ export default function CharacterViewerCanvas({
   modelUri,
   modelLabel,
   level,
+  xpIntoCurrentLevel,
+  xpRequiredForLevel,
+  progressToNextLevel,
   appearance = 'light',
 }: CharacterViewerCanvasProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -681,7 +694,9 @@ export default function CharacterViewerCanvas({
           width: 100%;
           height: 100%;
           min-height: 300px;
-          background: ${palette.scene};
+          background:
+            radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.92) 0%, transparent 36%),
+            linear-gradient(180deg, #f9fbfd 0%, ${palette.scene} 42%, ${palette.floor} 100%);
         }
 
         .canvas-shell {
@@ -690,7 +705,9 @@ export default function CharacterViewerCanvas({
           height: 100%;
           min-height: 300px;
           overflow: hidden;
-          background: ${palette.scene};
+          background:
+            radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9) 0%, transparent 34%),
+            linear-gradient(180deg, #f9fbfd 0%, ${palette.scene} 48%, ${palette.floor} 100%);
           isolation: isolate;
         }
 
@@ -701,9 +718,11 @@ export default function CharacterViewerCanvas({
           left: -16%;
           right: -16%;
           bottom: 0;
-          height: 40%;
-          border-top: 1px solid ${palette.seam};
-          background: linear-gradient(180deg, ${palette.floor} 0%, ${palette.floorDeep} 100%);
+          height: 46%;
+          border-top: 1px solid rgba(255, 255, 255, 0.52);
+          background:
+            linear-gradient(180deg, rgba(246, 248, 251, 0) 0%, ${palette.floor} 28%, ${palette.floorDeep} 100%);
+          mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
         }
 
         .canvas-shell::after {
@@ -744,6 +763,7 @@ export default function CharacterViewerCanvas({
         .viewer-overlay.is-error {
           color: ${palette.error};
         }
+
       `}</style>
       <div className="canvas-shell" ref={mountRef}>
         {status !== 'ready' ? (

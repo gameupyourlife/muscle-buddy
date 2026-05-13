@@ -66,6 +66,7 @@ export default function HomeScreen() {
     <Screen
       refreshing={isLoading}
       onRefresh={refreshNow}
+      className="bg-[#f6f8fb]"
       contentContainerStyle={{ paddingTop: 8 }}
     >
       <Stack.Screen
@@ -87,12 +88,14 @@ export default function HomeScreen() {
       {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
 
       {/* Hero — virtual muscle buddy */}
-      <Surface padded={false} className="overflow-hidden">
+      <Surface padded={false} className="-mx-4 overflow-hidden rounded-none border-0 bg-transparent">
         <VirtualMuscleBuddy
           level={level}
           totalXp={totalXp}
           currentStreak={currentStreak}
           progressToNextLevel={progressToNextLevel}
+          xpIntoCurrentLevel={xpIntoCurrentLevel}
+          xpRequiredForLevel={xpRequiredForLevel}
           xpToNextLevel={xpToNextLevel}
           characterSelection={characterSelection}
           isSavingCharacterSelection={isSavingCharacterSelection}
