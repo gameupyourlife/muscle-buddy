@@ -8,10 +8,6 @@ import { ActivityIndicator, View, useColorScheme } from 'react-native';
 type CharacterModelStageProps = {
   assetId: CharacterModelAssetId;
   modelLabel: string;
-  level: number;
-  xpIntoCurrentLevel: number;
-  xpRequiredForLevel: number;
-  progressToNextLevel: number;
   appearance?: 'light' | 'dark';
   className?: string;
   height?: number;
@@ -20,10 +16,6 @@ type CharacterModelStageProps = {
 export function CharacterModelStage({
   assetId,
   modelLabel,
-  level,
-  xpIntoCurrentLevel,
-  xpRequiredForLevel,
-  progressToNextLevel,
   appearance: appearanceOverride,
   className,
   height = 320,
@@ -36,7 +28,6 @@ export function CharacterModelStage({
   useEffect(() => {
     let isMounted = true;
 
-    setModelUri(null);
     setErrorMessage(null);
 
     loadCharacterModelUri(assetId)
@@ -65,13 +56,8 @@ export function CharacterModelStage({
       style={{ borderCurve: 'continuous' }}>
       {modelUri ? (
         <CharacterViewerCanvas
-          key={`${assetId}-${modelUri}`}
           modelUri={modelUri}
           modelLabel={modelLabel}
-          level={level}
-          xpIntoCurrentLevel={xpIntoCurrentLevel}
-          xpRequiredForLevel={xpRequiredForLevel}
-          progressToNextLevel={progressToNextLevel}
           appearance={appearance}
           dom={{
             scrollEnabled: false,

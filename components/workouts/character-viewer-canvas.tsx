@@ -8,10 +8,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 type CharacterViewerCanvasProps = {
   modelUri: string;
   modelLabel: string;
-  level: number;
-  xpIntoCurrentLevel: number;
-  xpRequiredForLevel: number;
-  progressToNextLevel: number;
   appearance?: 'light' | 'dark';
   dom?: import('expo/dom').DOMProps;
 };
@@ -522,10 +518,6 @@ function frameModelInScene(
 export default function CharacterViewerCanvas({
   modelUri,
   modelLabel,
-  level,
-  xpIntoCurrentLevel,
-  xpRequiredForLevel,
-  progressToNextLevel,
   appearance = 'light',
 }: CharacterViewerCanvasProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -667,12 +659,12 @@ export default function CharacterViewerCanvas({
         mount.removeChild(renderer.domElement);
       }
     };
-  }, [appearance, level, modelUri, palette]);
+  }, [appearance, modelUri, palette]);
 
   return (
     <div
       className="viewer-root"
-      aria-label={`Rotatable 3D model for ${modelLabel} on level ${level}`}>
+      aria-label={`Rotatable 3D model for ${modelLabel}`}>
       <style>{`
         * {
           box-sizing: border-box;

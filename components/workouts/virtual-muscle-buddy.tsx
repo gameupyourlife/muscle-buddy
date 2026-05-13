@@ -188,10 +188,6 @@ export function VirtualMuscleBuddy({
           <CharacterModelStage
             assetId={model.assetId}
             modelLabel={modelLabel}
-            level={model.level}
-            xpIntoCurrentLevel={xpIntoCurrentLevel}
-            xpRequiredForLevel={xpRequiredForLevel}
-            progressToNextLevel={progressToNextLevel}
             height={520}
             className="h-[520px] overflow-hidden bg-[#f6f8fb]"
           />
