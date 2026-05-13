@@ -9,9 +9,17 @@ type CharacterModelStageProps = {
   assetId: CharacterModelAssetId;
   modelLabel: string;
   level: number;
+  className?: string;
+  height?: number;
 };
 
-export function CharacterModelStage({ assetId, modelLabel, level }: CharacterModelStageProps) {
+export function CharacterModelStage({
+  assetId,
+  modelLabel,
+  level,
+  className,
+  height = 320,
+}: CharacterModelStageProps) {
   const [modelUri, setModelUri] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const colorScheme = useColorScheme();
@@ -43,9 +51,10 @@ export function CharacterModelStage({ assetId, modelLabel, level }: CharacterMod
 
   return (
     <View
-      className="h-[320px] overflow-hidden rounded-xl border border-border/70 bg-card"
-      style={{ borderCurve: 'continuous' }}
-    >
+      className={
+        className ?? 'h-[320px] overflow-hidden rounded-xl border border-border/70 bg-card'
+      }
+      style={{ borderCurve: 'continuous' }}>
       {modelUri ? (
         <CharacterViewerCanvas
           key={`${assetId}-${modelUri}`}
@@ -61,7 +70,7 @@ export function CharacterModelStage({ assetId, modelLabel, level }: CharacterMod
             allowUniversalAccessFromFileURLs: true,
             style: {
               width: '100%',
-              height: 320,
+              height,
               backgroundColor: 'transparent',
             },
           }}

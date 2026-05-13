@@ -30,7 +30,7 @@ export async function POST(request: Request, { buddyUserId }: { buddyUserId: str
   try {
     const body = (await request.json()) as { body?: string };
 
-    if (!body.body?.trim()) {
+    if (!body?.body?.trim()) {
       return Response.json({ error: 'body is required.' }, { status: 400 });
     }
 
