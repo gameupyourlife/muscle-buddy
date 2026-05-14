@@ -22,6 +22,8 @@ export const LEVEL_THRESHOLDS = [
   0,
   1000,
   3500,
+  7500,
+  12500,
 ] as const;
 
 export const WEEKDAY_INDEX = {

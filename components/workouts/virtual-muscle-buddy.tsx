@@ -7,16 +7,12 @@ import { Progress } from '@/components/ui/progress';
 import { Text } from '@/components/ui/text';
 import { CharacterModelStage } from '@/components/workouts/character-model-stage';
 import {
-  CHARACTER_ITEM_SLOTS,
   type CharacterSelection,
-  type CharacterSlotId,
-  getCharacterItemOptions,
   getCharacterOptions,
   normalizeCharacterSelection,
   resolveCharacterModel,
 } from '@/lib/workouts/character';
 import {
-  CheckCircle2Icon,
   DumbbellIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
@@ -59,53 +55,24 @@ const STAGES: BuddyStage[] = [
     subtitle: 'Strength and habits are locked in.',
     pepTalk: 'Stay patient, stay strong.',
   },
+  {
+    label: 'Powerhouse',
+    subtitle: 'Big lifts, cleaner habits, and serious momentum.',
+    pepTalk: 'Own the next rep.',
+  },
+  {
+    label: 'Legend Mode',
+    subtitle: 'Peak discipline with a buddy built for heavy days.',
+    pepTalk: 'Lead from the front.',
+  },
 ];
 
 function getStageIndex(level: number) {
-  if (level <= 1) {
+  if (!Number.isFinite(level)) {
     return 0;
   }
 
-  if (level <= 2) {
-    return 1;
-  }
-
-  return 2;
-}
-
-function CharacterSlotPicker({
-  slotId,
-  value,
-  onValueChange,
-}: {
-  slotId: CharacterSlotId;
-  value: string;
-  onValueChange: (value: string) => void;
-}) {
-  const slot = CHARACTER_ITEM_SLOTS.find((entry) => entry.id === slotId);
-  const options = getCharacterItemOptions(slotId).map((option) => ({
-    value: option.id,
-    label: option.label,
-  }));
-
-  if (!slot) {
-    return null;
-  }
-
-  return (
-    <View className="gap-2">
-      <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {slot.label}
-      </Text>
-      <OptionChips
-        items={options}
-        value={value}
-        size="sm"
-        layout="wrap"
-        onValueChange={onValueChange}
-      />
-    </View>
-  );
+  return Math.max(0, Math.min(STAGES.length - 1, Math.trunc(level) - 1));
 }
 
 export function VirtualMuscleBuddy({
@@ -126,7 +93,7 @@ export function VirtualMuscleBuddy({
     [characterSelection, level]
   );
   const stage = STAGES[getStageIndex(model.level)];
-  const modelLabel = `${model.characterLabel} - ${model.itemLabel}`;
+  const modelLabel = model.characterLabel;
   const characterOptions = useMemo(getCharacterOptions, []);
   const normalizedSelection = model.selection;
 
@@ -135,18 +102,6 @@ export function VirtualMuscleBuddy({
       normalizeCharacterSelection({
         characterId,
         equipment: normalizedSelection.equipment,
-      })
-    );
-  };
-
-  const updateEquipment = (slotId: CharacterSlotId, itemId: string) => {
-    onCharacterSelectionChange(
-      normalizeCharacterSelection({
-        characterId: normalizedSelection.characterId,
-        equipment: {
-          ...normalizedSelection.equipment,
-          [slotId]: itemId,
-        },
       })
     );
   };
@@ -252,21 +207,9 @@ export function VirtualMuscleBuddy({
               />
             </View>
 
-            {CHARACTER_ITEM_SLOTS.map((slot) => (
-              <CharacterSlotPicker
-                key={slot.id}
-                slotId={slot.id}
-                value={normalizedSelection.equipment[slot.id]}
-                onValueChange={(itemId) => updateEquipment(slot.id, itemId)}
-              />
-            ))}
-
-            <View className="flex-row items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
-              <Icon as={CheckCircle2Icon} size={14} className="text-primary" />
-              <Text className="text-xs text-primary">
-                Equipped: {model.characterLabel}, {model.itemLabel}
-              </Text>
-            </View>
+            <Text className="text-xs leading-5 text-muted-foreground">
+              Selected: {model.characterLabel}
+            </Text>
           </View>
         </CollapsibleContent>
       </Collapsible>

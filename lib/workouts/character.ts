@@ -1,4 +1,4 @@
-export const MAX_BUDDY_LEVEL = 3;
+export const MAX_BUDDY_LEVEL = 5;
 
 export const CHARACTER_MODELS = {
   male: {
@@ -12,7 +12,7 @@ export const CHARACTER_MODELS = {
 } as const;
 
 export type CharacterId = keyof typeof CHARACTER_MODELS;
-export type BuddyLevel = 1 | 2 | 3;
+export type BuddyLevel = 1 | 2 | 3 | 4 | 5;
 
 export const CHARACTER_ITEM_SLOTS = [
   {

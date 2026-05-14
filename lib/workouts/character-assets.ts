@@ -5,9 +5,13 @@ const CHARACTER_MODEL_MODULES = {
   male_lvl1_red_headband: require('../../assets/characters/base/male/lvl1_red_headband.glb'),
   male_lvl2_red_headband: require('../../assets/characters/base/male/lvl2_red_headband.glb'),
   male_lvl3_red_headband: require('../../assets/characters/base/male/lvl3_red_headband.glb'),
+  male_lvl4_red_headband: require('../../assets/characters/base/male/lvl4_red_headband.glb'),
+  male_lvl5_red_headband: require('../../assets/characters/base/male/lvl5_red_headband.glb'),
   female_lvl1_red_headband: require('../../assets/characters/base/female/lvl1_red_headband.glb'),
   female_lvl2_red_headband: require('../../assets/characters/base/female/lvl2_red_headband.glb'),
   female_lvl3_red_headband: require('../../assets/characters/base/female/lvl3_red_headband.glb'),
+  female_lvl4_red_headband: require('../../assets/characters/base/female/lvl4_red_headband.glb'),
+  female_lvl5_red_headband: require('../../assets/characters/base/female/lvl5_red_headband.glb'),
 } as const satisfies Record<CharacterModelAssetId, number>;
 
 const CHARACTER_PREVIEW_MODULES = {

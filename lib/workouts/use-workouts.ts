@@ -153,9 +153,7 @@ type PreloadWorkoutsOptions = {
 let workoutsCache: WorkoutsCacheSnapshot | null = null;
 let workoutsLoadPromise: Promise<void> | null = null;
 
-function updateWorkoutsCache(
-  patch: Partial<Omit<WorkoutsCacheSnapshot, 'cachedAt'>>
-) {
+function updateWorkoutsCache(patch: Partial<Omit<WorkoutsCacheSnapshot, 'cachedAt'>>) {
   const nextCache: WorkoutsCacheSnapshot = {
     dashboard: patch.dashboard ?? workoutsCache?.dashboard ?? null,
     templates: patch.templates ?? workoutsCache?.templates ?? [],
@@ -170,8 +168,7 @@ function updateWorkoutsCache(
   return nextCache.cachedAt;
 }
 
-const createLocalId = () =>
-  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+const createLocalId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'message' in error) {
@@ -219,11 +216,7 @@ export async function preloadWorkoutsData(options: PreloadWorkoutsOptions = {}) 
     return;
   }
 
-  if (
-    !force &&
-    workoutsCache &&
-    Date.now() - workoutsCache.cachedAt < FOCUS_REFRESH_COOLDOWN_MS
-  ) {
+  if (!force && workoutsCache && Date.now() - workoutsCache.cachedAt < FOCUS_REFRESH_COOLDOWN_MS) {
     return;
   }
 
@@ -235,7 +228,7 @@ export async function preloadWorkoutsData(options: PreloadWorkoutsOptions = {}) 
 
   const shouldAddNgrokHeader = apiBaseUrl.includes('ngrok');
 
-  const apiCall = async <T,>(path: string, init?: RequestInit): Promise<T> => {
+  const apiCall = async <T>(path: string, init?: RequestInit): Promise<T> => {
     const cookies = authClient.getCookie();
     const headers = new Headers(init?.headers);
 
@@ -255,7 +248,7 @@ export async function preloadWorkoutsData(options: PreloadWorkoutsOptions = {}) 
       credentials: 'omit',
     });
 
-    const body = (await response.json().catch(() => null)) as T & { error?: string } | null;
+    const body = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
 
     if (!response.ok) {
       throw new Error(body?.error || `Request failed with status ${response.status}.`);
@@ -277,24 +270,33 @@ export async function preloadWorkoutsData(options: PreloadWorkoutsOptions = {}) 
   }));
 
   const loadPromise = (async () => {
-    const [dashboardResult, templatesResult, plansResult, sessionsResult, exercisesResult] = await Promise.allSettled([
-      apiCall<DashboardResponse>(
-        `/api/workouts/dashboard?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
-      ),
-      apiCall<{ templates: Template[] }>('/api/workouts/templates'),
-      apiCall<{ plans: TrainingPlan[] }>('/api/workouts/plans'),
-      apiCall<{ sessions: Session[] }>('/api/workouts/sessions'),
-      apiCall<{ exercises: Exercise[] }>('/api/workouts/exercises'),
-    ]);
+    const [dashboardResult, templatesResult, plansResult, sessionsResult, exercisesResult] =
+      await Promise.allSettled([
+        apiCall<DashboardResponse>(
+          `/api/workouts/dashboard?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
+        ),
+        apiCall<{ templates: Template[] }>('/api/workouts/templates'),
+        apiCall<{ plans: TrainingPlan[] }>('/api/workouts/plans'),
+        apiCall<{ sessions: Session[] }>('/api/workouts/sessions'),
+        apiCall<{ exercises: Exercise[] }>('/api/workouts/exercises'),
+      ]);
 
     const nextDashboard =
-      dashboardResult.status === 'fulfilled' ? dashboardResult.value : workoutsCache?.dashboard ?? null;
+      dashboardResult.status === 'fulfilled'
+        ? dashboardResult.value
+        : (workoutsCache?.dashboard ?? null);
     const nextTemplates =
-      templatesResult.status === 'fulfilled' ? templatesResult.value.templates : workoutsCache?.templates ?? [];
-    const nextPlans = plansResult.status === 'fulfilled' ? plansResult.value.plans : workoutsCache?.plans ?? [];
+      templatesResult.status === 'fulfilled'
+        ? templatesResult.value.templates
+        : (workoutsCache?.templates ?? []);
+    const nextPlans =
+      plansResult.status === 'fulfilled' ? plansResult.value.plans : (workoutsCache?.plans ?? []);
     const nextSessions =
-      sessionsResult.status === 'fulfilled' ? sessionsResult.value.sessions : workoutsCache?.recentSessions ?? [];
-    const nextActiveSession = nextSessions.find((session) => session.status === 'in_progress') ?? null;
+      sessionsResult.status === 'fulfilled'
+        ? sessionsResult.value.sessions
+        : (workoutsCache?.recentSessions ?? []);
+    const nextActiveSession =
+      nextSessions.find((session) => session.status === 'in_progress') ?? null;
     const nextExercises =
       exercisesResult.status === 'fulfilled' && exercisesResult.value.exercises.length > 0
         ? exercisesResult.value.exercises
@@ -338,7 +340,9 @@ export function useWorkoutsData() {
 
   const fallbackExerciseId = fallbackExercises[0]?.id ?? '';
 
-  const [dashboard, setDashboard] = useState<DashboardResponse | null>(workoutsCache?.dashboard ?? null);
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(
+    workoutsCache?.dashboard ?? null
+  );
   const [templates, setTemplates] = useState<Template[]>(workoutsCache?.templates ?? []);
   const [plans, setPlans] = useState<TrainingPlan[]>(workoutsCache?.plans ?? []);
   const [exercises, setExercises] = useState<Exercise[]>(() => {
@@ -348,8 +352,12 @@ export function useWorkoutsData() {
 
     return fallbackExercises;
   });
-  const [recentSessions, setRecentSessions] = useState<Session[]>(workoutsCache?.recentSessions ?? []);
-  const [activeSession, setActiveSession] = useState<Session | null>(workoutsCache?.activeSession ?? null);
+  const [recentSessions, setRecentSessions] = useState<Session[]>(
+    workoutsCache?.recentSessions ?? []
+  );
+  const [activeSession, setActiveSession] = useState<Session | null>(
+    workoutsCache?.activeSession ?? null
+  );
 
   const [selectedWorkoutDay, setSelectedWorkoutDay] = useState(getTodayWorkoutDayValue);
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('free');
@@ -384,9 +392,11 @@ export function useWorkoutsData() {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
   const apiCall = useCallback(
-    async <T,>(path: string, init?: RequestInit): Promise<T> => {
+    async <T>(path: string, init?: RequestInit): Promise<T> => {
       if (!apiBaseUrl) {
-        throw new Error('No API base URL available. Set EXPO_PUBLIC_API_BASE_URL for native builds.');
+        throw new Error(
+          'No API base URL available. Set EXPO_PUBLIC_API_BASE_URL for native builds.'
+        );
       }
 
       const shouldAddNgrokHeader = apiBaseUrl.includes('ngrok');
@@ -409,7 +419,7 @@ export function useWorkoutsData() {
         credentials: 'omit',
       });
 
-      const body = (await response.json().catch(() => null)) as T & { error?: string } | null;
+      const body = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
 
       if (!response.ok) {
         throw new Error(body?.error || `Request failed with status ${response.status}.`);
@@ -450,13 +460,12 @@ export function useWorkoutsData() {
       });
 
       try {
-        const response = await apiCall<{ gamification: NonNullable<DashboardResponse['gamification']> }>(
-          '/api/workouts/character',
-          {
-            method: 'PATCH',
-            body: JSON.stringify(selection),
-          }
-        );
+        const response = await apiCall<{
+          gamification: NonNullable<DashboardResponse['gamification']>;
+        }>('/api/workouts/character', {
+          method: 'PATCH',
+          body: JSON.stringify(selection),
+        });
 
         setDashboard((current) => {
           if (!current) {
@@ -483,7 +492,8 @@ export function useWorkoutsData() {
 
   const refreshSessions = useCallback(async () => {
     const sessionsResponse = await apiCall<{ sessions: Session[] }>('/api/workouts/sessions');
-    const active = sessionsResponse.sessions.find((session) => session.status === 'in_progress') ?? null;
+    const active =
+      sessionsResponse.sessions.find((session) => session.status === 'in_progress') ?? null;
     setRecentSessions(sessionsResponse.sessions);
     setActiveSession(active);
     lastSyncAtRef.current = updateWorkoutsCache({
@@ -493,117 +503,133 @@ export function useWorkoutsData() {
     hasLoadedOnceRef.current = true;
   }, [apiCall]);
 
-  const loadInitialData = useCallback(async (options: LoadWorkoutsOptions = {}) => {
-    const { force = false, silent = false } = options;
-    const shouldShowSpinner = !silent || !hasLoadedOnceRef.current;
+  const loadInitialData = useCallback(
+    async (options: LoadWorkoutsOptions = {}) => {
+      const { force = false, silent = false } = options;
+      const shouldShowSpinner = !silent || !hasLoadedOnceRef.current;
 
-    if (!force && workoutsLoadPromise) {
-      await workoutsLoadPromise;
-      return;
-    }
-
-    if (
-      !force &&
-      hasLoadedOnceRef.current &&
-      Date.now() - lastSyncAtRef.current < FOCUS_REFRESH_COOLDOWN_MS
-    ) {
-      return;
-    }
-
-    if (shouldShowSpinner) {
-      setIsLoading(true);
-    }
-
-    if (!silent) {
-      setFeedback(null);
-    }
-    setErrorMessage(null);
-
-    const loadPromise = (async () => {
-      try {
-        const [dashboardResult, templatesResult, plansResult, sessionsResult, exercisesResult] = await Promise.allSettled([
-          apiCall<DashboardResponse>(
-            `/api/workouts/dashboard?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
-          ),
-          apiCall<{ templates: Template[] }>('/api/workouts/templates'),
-          apiCall<{ plans: TrainingPlan[] }>('/api/workouts/plans'),
-          apiCall<{ sessions: Session[] }>('/api/workouts/sessions'),
-          apiCall<{ exercises: Exercise[] }>('/api/workouts/exercises'),
-        ]);
-
-        const nextDashboard =
-          dashboardResult.status === 'fulfilled' ? dashboardResult.value : workoutsCache?.dashboard ?? null;
-        const nextTemplates =
-          templatesResult.status === 'fulfilled' ? templatesResult.value.templates : workoutsCache?.templates ?? [];
-        const nextPlans = plansResult.status === 'fulfilled' ? plansResult.value.plans : workoutsCache?.plans ?? [];
-        const nextSessions =
-          sessionsResult.status === 'fulfilled' ? sessionsResult.value.sessions : workoutsCache?.recentSessions ?? [];
-        const nextActiveSession = nextSessions.find((session) => session.status === 'in_progress') ?? null;
-        const nextExercises =
-          exercisesResult.status === 'fulfilled' && exercisesResult.value.exercises.length > 0
-            ? exercisesResult.value.exercises
-            : workoutsCache?.exercises && workoutsCache.exercises.length > 0
-              ? workoutsCache.exercises
-              : fallbackExercises;
-
-        setDashboard(nextDashboard);
-        setTemplates(nextTemplates);
-        setPlans(nextPlans);
-        setRecentSessions(nextSessions);
-        setActiveSession(nextActiveSession);
-        setExercises(nextExercises);
-        setTrackerExerciseId((current) => {
-          if (current && nextExercises.some((exercise) => exercise.id === current)) {
-            return current;
-          }
-          return nextExercises[0]?.id ?? '';
-        });
-        setCustomExerciseId((current) => {
-          if (current && nextExercises.some((exercise) => exercise.id === current)) {
-            return current;
-          }
-          return nextExercises[0]?.id ?? '';
-        });
-
-        lastSyncAtRef.current = updateWorkoutsCache({
-          dashboard: nextDashboard,
-          templates: nextTemplates,
-          plans: nextPlans,
-          recentSessions: nextSessions,
-          activeSession: nextActiveSession,
-          exercises: nextExercises,
-        });
-        hasLoadedOnceRef.current = true;
-
-        const hasAnyFailure =
-          dashboardResult.status === 'rejected' ||
-          templatesResult.status === 'rejected' ||
-          plansResult.status === 'rejected' ||
-          sessionsResult.status === 'rejected' ||
-          exercisesResult.status === 'rejected';
-
-        if (hasAnyFailure) {
-          setErrorMessage('Some workout data could not be synced. You can still use available selections and retry.');
-        }
-      } catch (error) {
-        setErrorMessage(getErrorMessage(error, 'Could not load workouts data.'));
+      if (!force && workoutsLoadPromise) {
+        await workoutsLoadPromise;
+        return;
       }
-    })();
 
-    workoutsLoadPromise = loadPromise;
-
-    try {
-      await loadPromise;
-    } finally {
-      if (workoutsLoadPromise === loadPromise) {
-        workoutsLoadPromise = null;
+      if (
+        !force &&
+        hasLoadedOnceRef.current &&
+        Date.now() - lastSyncAtRef.current < FOCUS_REFRESH_COOLDOWN_MS
+      ) {
+        return;
       }
 
       if (shouldShowSpinner) {
-        setIsLoading(false);
+        setIsLoading(true);
       }
-    }
-  }, [apiCall, fallbackExercises]);
+
+      if (!silent) {
+        setFeedback(null);
+      }
+      setErrorMessage(null);
+
+      const loadPromise = (async () => {
+        try {
+          const [dashboardResult, templatesResult, plansResult, sessionsResult, exercisesResult] =
+            await Promise.allSettled([
+              apiCall<DashboardResponse>(
+                `/api/workouts/dashboard?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
+              ),
+              apiCall<{ templates: Template[] }>('/api/workouts/templates'),
+              apiCall<{ plans: TrainingPlan[] }>('/api/workouts/plans'),
+              apiCall<{ sessions: Session[] }>('/api/workouts/sessions'),
+              apiCall<{ exercises: Exercise[] }>('/api/workouts/exercises'),
+            ]);
+
+          const nextDashboard =
+            dashboardResult.status === 'fulfilled'
+              ? dashboardResult.value
+              : (workoutsCache?.dashboard ?? null);
+          const nextTemplates =
+            templatesResult.status === 'fulfilled'
+              ? templatesResult.value.templates
+              : (workoutsCache?.templates ?? []);
+          const nextPlans =
+            plansResult.status === 'fulfilled'
+              ? plansResult.value.plans
+              : (workoutsCache?.plans ?? []);
+          const nextSessions =
+            sessionsResult.status === 'fulfilled'
+              ? sessionsResult.value.sessions
+              : (workoutsCache?.recentSessions ?? []);
+          const nextActiveSession =
+            nextSessions.find((session) => session.status === 'in_progress') ?? null;
+          const nextExercises =
+            exercisesResult.status === 'fulfilled' && exercisesResult.value.exercises.length > 0
+              ? exercisesResult.value.exercises
+              : workoutsCache?.exercises && workoutsCache.exercises.length > 0
+                ? workoutsCache.exercises
+                : fallbackExercises;
+
+          setDashboard(nextDashboard);
+          setTemplates(nextTemplates);
+          setPlans(nextPlans);
+          setRecentSessions(nextSessions);
+          setActiveSession(nextActiveSession);
+          setExercises(nextExercises);
+          setTrackerExerciseId((current) => {
+            if (current && nextExercises.some((exercise) => exercise.id === current)) {
+              return current;
+            }
+            return nextExercises[0]?.id ?? '';
+          });
+          setCustomExerciseId((current) => {
+            if (current && nextExercises.some((exercise) => exercise.id === current)) {
+              return current;
+            }
+            return nextExercises[0]?.id ?? '';
+          });
+
+          lastSyncAtRef.current = updateWorkoutsCache({
+            dashboard: nextDashboard,
+            templates: nextTemplates,
+            plans: nextPlans,
+            recentSessions: nextSessions,
+            activeSession: nextActiveSession,
+            exercises: nextExercises,
+          });
+          hasLoadedOnceRef.current = true;
+
+          const hasAnyFailure =
+            dashboardResult.status === 'rejected' ||
+            templatesResult.status === 'rejected' ||
+            plansResult.status === 'rejected' ||
+            sessionsResult.status === 'rejected' ||
+            exercisesResult.status === 'rejected';
+
+          if (hasAnyFailure) {
+            setErrorMessage(
+              'Some workout data could not be synced. You can still use available selections and retry.'
+            );
+          }
+        } catch (error) {
+          setErrorMessage(getErrorMessage(error, 'Could not load workouts data.'));
+        }
+      })();
+
+      workoutsLoadPromise = loadPromise;
+
+      try {
+        await loadPromise;
+      } finally {
+        if (workoutsLoadPromise === loadPromise) {
+          workoutsLoadPromise = null;
+        }
+
+        if (shouldShowSpinner) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [apiCall, fallbackExercises]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -659,7 +685,9 @@ export function useWorkoutsData() {
       }))
     );
 
-    setPlanEditorExerciseId((current) => current || activePlan.exercises[0]?.exerciseId || fallbackExerciseId);
+    setPlanEditorExerciseId(
+      (current) => current || activePlan.exercises[0]?.exerciseId || fallbackExerciseId
+    );
   }, [activePlan, fallbackExerciseId]);
 
   const selectedWorkoutDayNumber = Number(selectedWorkoutDay);
@@ -728,7 +756,12 @@ export function useWorkoutsData() {
     }
 
     return trackerExerciseOptions[0]?.value ?? '';
-  }, [currentSessionSetCountByExercise, selectedWorkoutDayPlanExercises, trackerExerciseOptions, trackingMode]);
+  }, [
+    currentSessionSetCountByExercise,
+    selectedWorkoutDayPlanExercises,
+    trackerExerciseOptions,
+    trackingMode,
+  ]);
 
   useEffect(() => {
     if (trackerExerciseOptions.length === 0) {
@@ -969,7 +1002,7 @@ export function useWorkoutsData() {
       {
         key: createLocalId(),
         exerciseId: planEditorExerciseId,
-        dayOfWeek: ((current.length % 7) + 1),
+        dayOfWeek: (current.length % 7) + 1,
         targetSets: '3',
         targetReps: '8',
         targetWeight: '50',
@@ -1047,7 +1080,14 @@ export function useWorkoutsData() {
     } finally {
       setIsSavingPlan(false);
     }
-  }, [activePlan, apiCall, loadInitialData, planEditorExercises, planEditorName, planEditorWeeklyTarget]);
+  }, [
+    activePlan,
+    apiCall,
+    loadInitialData,
+    planEditorExercises,
+    planEditorName,
+    planEditorWeeklyTarget,
+  ]);
 
   const startSession = useCallback(async () => {
     if (trackingMode === 'plan' && !activePlan) {
@@ -1073,7 +1113,7 @@ export function useWorkoutsData() {
         method: 'POST',
         body: JSON.stringify({
           source: isPlanMode ? 'plan' : 'free',
-          planId: isPlanMode ? activePlan?.id ?? null : null,
+          planId: isPlanMode ? (activePlan?.id ?? null) : null,
           useActivePlan: isPlanMode,
           startedAt: new Date().toISOString(),
         }),
@@ -1085,10 +1125,13 @@ export function useWorkoutsData() {
       };
 
       setActiveSession(nextSession);
-      setRecentSessions((current) => [nextSession, ...current.filter((entry) => entry.id !== nextSession.id)]);
+      setRecentSessions((current) => [
+        nextSession,
+        ...current.filter((entry) => entry.id !== nextSession.id),
+      ]);
       setFeedback(
         isPlanMode
-          ? 'Plan day workout started. Log your sets for today\'s exercises in any order.'
+          ? "Plan day workout started. Log your sets for today's exercises in any order."
           : 'Free workout started. Pick any machine or exercise and log your sets.'
       );
       await refreshDashboard();
@@ -1123,14 +1166,17 @@ export function useWorkoutsData() {
       setErrorMessage(null);
 
       try {
-        const response = await apiCall<{ set: SessionSet }>(`/api/workouts/sessions/${activeSession.id}/sets`, {
-          method: 'POST',
-          body: JSON.stringify({
-            exerciseId,
-            reps: parsedReps,
-            weight: parsedWeight,
-          }),
-        });
+        const response = await apiCall<{ set: SessionSet }>(
+          `/api/workouts/sessions/${activeSession.id}/sets`,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              exerciseId,
+              reps: parsedReps,
+              weight: parsedWeight,
+            }),
+          }
+        );
 
         setActiveSession((current) => {
           if (!current) {
@@ -1206,7 +1252,8 @@ export function useWorkoutsData() {
   }, [activeSession, apiCall, refreshDashboard, refreshSessions]);
 
   const completed = dashboard?.weeklyProgress?.completedWorkouts ?? 0;
-  const target = dashboard?.weeklyProgress?.weeklyTarget ?? dashboard?.activePlan?.weeklyTarget ?? 0;
+  const target =
+    dashboard?.weeklyProgress?.weeklyTarget ?? dashboard?.activePlan?.weeklyTarget ?? 0;
   const progressValue = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
   const canCompleteSession = Boolean(activeSession && activeSession.sets.length > 0);
 
