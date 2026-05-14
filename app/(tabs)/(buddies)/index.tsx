@@ -17,7 +17,6 @@ import {
     useSocialData,
 } from '@/lib/workouts/use-social';
 import { useRouter } from 'expo-router';
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import {
     CalendarPlusIcon,
     MessageCircleIcon,
@@ -99,13 +98,6 @@ export default function BuddiesScreen() {
       onRefresh={refreshNow}
       contentContainerStyle={{ paddingTop: 8 }}
     >
-      <NativeTabs.Trigger>
-        <NativeTabs.Trigger.Badge
-          hidden={unreadCount === 0}
-        >
-          {unreadCount > 0 ? String(unreadCount) : ''}
-        </NativeTabs.Trigger.Badge>
-      </NativeTabs.Trigger>
       {feedback ? <Banner tone="success" message={feedback} /> : null}
       {errorMessage ? <Banner tone="destructive" message={errorMessage} /> : null}
       {/* Buddy profile summary */}
