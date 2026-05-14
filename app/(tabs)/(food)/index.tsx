@@ -11,22 +11,20 @@ import { Progress } from '@/components/ui/progress';
 import { ListGroup, Screen, SectionHeader, Surface } from '@/components/ui/screen';
 import { StatTile } from '@/components/ui/stat-tile';
 import { Text } from '@/components/ui/text';
+import { MEAL_TYPE_OPTIONS, MealType, useFoodTrackingData } from '@/lib/workouts/use-food-tracking';
+import { CameraView, type BarcodeScanningResult, useCameraPermissions } from 'expo-camera';
 import {
-    MEAL_TYPE_OPTIONS,
-    MealType,
-    useFoodTrackingData,
-} from '@/lib/workouts/use-food-tracking';
-import {
-    BarcodeIcon,
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    FlameIcon,
-    PlusIcon,
-    SaladIcon,
-    SearchIcon,
-    Trash2Icon,
+  BarcodeIcon,
+  CameraIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  FlameIcon,
+  PlusIcon,
+  SaladIcon,
+  SearchIcon,
+  Trash2Icon,
 } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
 
 function shiftDate(iso: string, deltaDays: number) {
@@ -45,6 +43,12 @@ function formatDate(iso: string) {
     day: 'numeric',
   });
 }
+
+const ADD_FOOD_MODE_OPTIONS = [
+  { value: 'scan', label: 'Scan' },
+  { value: 'search', label: 'Search' },
+  { value: 'manual', label: 'Manual' },
+] as const;
 
 export default function FoodScreen() {
   const {
@@ -89,6 +93,11 @@ export default function FoodScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [barcode, setBarcode] = useState('');
+  const [addFoodMode, setAddFoodMode] = useState<'scan' | 'search' | 'manual'>('scan');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [barcodeLookupNotice, setBarcodeLookupNotice] = useState<string | null>(null);
+  const scanLockRef = useRef(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const totals = summary?.totals;
   const goalsActive = !!goals;
@@ -142,6 +151,76 @@ export default function FoodScreen() {
     setFat('');
   };
 
+  const applyFoodToQuickAdd = (food: {
+    name: string;
+    calories: number;
+    proteinGrams: number;
+    carbsGrams: number;
+    fatGrams: number;
+  }) => {
+    setFoodName(food.name);
+    setCalories(String(Math.round(food.calories)));
+    setProtein(String(Math.round(food.proteinGrams)));
+    setCarbs(String(Math.round(food.carbsGrams)));
+    setFat(String(Math.round(food.fatGrams)));
+  };
+
+  const handleBarcodeLookup = async (nextBarcode: string) => {
+    const cleanBarcode = nextBarcode.trim();
+
+    if (!cleanBarcode) {
+      return;
+    }
+
+    setBarcode(cleanBarcode);
+    setBarcodeLookupNotice(null);
+    const result = await lookupBarcode(cleanBarcode);
+
+    if (!result) {
+      setBarcodeLookupNotice('No nutrition data found for this barcode.');
+      return;
+    }
+
+    setBarcodeLookupNotice(
+      result.source === 'local'
+        ? 'Found in your food catalog.'
+        : 'Found via Open Food Facts. Review before logging.'
+    );
+  };
+
+  const openBarcodeScanner = async () => {
+    setBarcodeLookupNotice(null);
+
+    if (!cameraPermission?.granted) {
+      const permission = await requestCameraPermission();
+
+      if (!permission.granted) {
+        Alert.alert(
+          'Camera access needed',
+          'Allow camera access to scan food barcodes. You can still enter the barcode manually.'
+        );
+        return;
+      }
+    }
+
+    scanLockRef.current = false;
+    setIsScannerOpen(true);
+  };
+
+  const handleBarcodeScanned = (result: BarcodeScanningResult) => {
+    const scannedValue = result.data?.trim();
+
+    if (scanLockRef.current || !scannedValue) {
+      return;
+    }
+
+    scanLockRef.current = true;
+    setIsScannerOpen(false);
+    void handleBarcodeLookup(scannedValue).finally(() => {
+      scanLockRef.current = false;
+    });
+  };
+
   return (
     <Screen refreshing={isLoading} onRefresh={refreshNow} contentContainerStyle={{ paddingTop: 8 }}>
       {feedback ? <Banner tone="success" message={feedback} /> : null}
@@ -149,11 +228,7 @@ export default function FoodScreen() {
       {/* Date nav */}
       <Surface>
         <View className="flex-row items-center justify-between gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onPress={() => updateDate(shiftDate(logDate, -1))}
-          >
+          <Button variant="ghost" size="icon" onPress={() => updateDate(shiftDate(logDate, -1))}>
             <Icon as={ChevronLeftIcon} size={20} className="text-foreground" />
           </Button>
           <View className="items-center">
@@ -170,8 +245,7 @@ export default function FoodScreen() {
             variant="ghost"
             size="icon"
             onPress={() => updateDate(shiftDate(logDate, 1))}
-            disabled={logDate >= todayIso()}
-          >
+            disabled={logDate >= todayIso()}>
             <Icon as={ChevronRightIcon} size={20} className="text-foreground" />
           </Button>
         </View>
@@ -185,7 +259,9 @@ export default function FoodScreen() {
               <Icon as={FlameIcon} size={22} className="text-primary" />
             </View>
             <View className="flex-1">
-              <Text className="text-[16px] font-semibold text-foreground">Set your nutrition goals</Text>
+              <Text className="text-[16px] font-semibold text-foreground">
+                Set your nutrition goals
+              </Text>
               <Text className="text-[13px] text-muted-foreground">
                 Daily targets unlock macro tracking and adherence scoring.
               </Text>
@@ -220,8 +296,7 @@ export default function FoodScreen() {
                 fatTarget: Number(fatTarget) || 70,
               })
             }
-            disabled={isSavingGoals}
-          >
+            disabled={isSavingGoals}>
             {isSavingGoals ? <ActivityIndicator size="small" color="white" /> : null}
             <Text>{isSavingGoals ? 'Saving…' : 'Save goals'}</Text>
           </Button>
@@ -265,7 +340,9 @@ export default function FoodScreen() {
                 <View key={macro.label} className="gap-1.5">
                   <View className="flex-row items-center justify-between">
                     <Text className="text-[13px] text-muted-foreground">{macro.label}</Text>
-                    <Text className="text-[13px] text-foreground" style={{ fontVariant: ['tabular-nums'] }}>
+                    <Text
+                      className="text-[13px] text-foreground"
+                      style={{ fontVariant: ['tabular-nums'] }}>
                       {macro.value} / {macro.target} {macro.unit}
                     </Text>
                   </View>
@@ -274,7 +351,7 @@ export default function FoodScreen() {
               );
             })}
             {summary?.adherence ? (
-              <View className="flex-row items-center justify-between pt-2 border-t-hairline border-separator">
+              <View className="flex-row items-center justify-between border-t-hairline border-separator pt-2">
                 <Text className="text-[13px] text-muted-foreground">Adherence score</Text>
                 <Badge variant={summary.adherence.score >= 80 ? 'default' : 'secondary'}>
                   <Text>{Math.round(summary.adherence.score)}%</Text>
@@ -289,7 +366,9 @@ export default function FoodScreen() {
       <SectionHeader
         title="Logged Meals"
         description={
-          logs.length === 0 ? 'Quick-add a meal below or apply a template.' : `${logs.length} item${logs.length === 1 ? '' : 's'}`
+          logs.length === 0
+            ? 'Quick-add a meal below or apply a template.'
+            : `${logs.length} item${logs.length === 1 ? '' : 's'}`
         }
       />
       {logs.length > 0 ? (
@@ -307,20 +386,15 @@ export default function FoodScreen() {
                   variant="ghost"
                   size="icon"
                   onPress={() => {
-                    Alert.alert(
-                      'Remove this meal?',
-                      `Remove "${log.foodName}" from today's log?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Remove',
-                          style: 'destructive',
-                          onPress: () => void removeFoodLog(log.id),
-                        },
-                      ],
-                    );
-                  }}
-                >
+                    Alert.alert('Remove this meal?', `Remove "${log.foodName}" from today's log?`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Remove',
+                        style: 'destructive',
+                        onPress: () => void removeFoodLog(log.id),
+                      },
+                    ]);
+                  }}>
                   <Icon as={Trash2Icon} size={16} className="text-destructive" />
                 </Button>
               }
@@ -334,154 +408,219 @@ export default function FoodScreen() {
             compact
             icon={SaladIcon}
             title="Nothing logged"
-            description="Track your first meal of the day below."
+            description="Scan, search, or add your first meal below."
           />
         </Surface>
       )}
 
-      {/* Quick add */}
-      <SectionHeader title="Quick Add" />
+      {/* Add food */}
+      <SectionHeader
+        title="Add Food"
+        description="Scan a package, search your catalog, or enter macros manually."
+      />
       <Surface>
-        <View className="gap-1.5">
-          <Label>Meal type</Label>
-          <OptionChips
-            layout="scroll"
-            size="sm"
-            items={MEAL_TYPE_OPTIONS}
-            value={mealType}
-            onValueChange={(value) => setMealType(value as MealType)}
-          />
-        </View>
-        <View className="gap-1.5">
-          <Label>Food name</Label>
-          <Input value={foodName} onChangeText={setFoodName} placeholder="e.g. Greek yogurt" />
-        </View>
-        <View className="flex-row gap-3">
-          <View className="flex-1 gap-1.5">
-            <Label>Quantity</Label>
-            <Input value={quantity} onChangeText={setQuantity} keyboardType="numeric" />
-          </View>
-          <View className="flex-1 gap-1.5">
-            <Label>Calories</Label>
-            <Input value={calories} onChangeText={setCalories} keyboardType="numeric" />
-          </View>
-        </View>
-        <View className="flex-row gap-3">
-          <View className="flex-1 gap-1.5">
-            <Label>Protein (g)</Label>
-            <Input value={protein} onChangeText={setProtein} keyboardType="numeric" />
-          </View>
-          <View className="flex-1 gap-1.5">
-            <Label>Carbs (g)</Label>
-            <Input value={carbs} onChangeText={setCarbs} keyboardType="numeric" />
-          </View>
-          <View className="flex-1 gap-1.5">
-            <Label>Fat (g)</Label>
-            <Input value={fat} onChangeText={setFat} keyboardType="numeric" />
-          </View>
-        </View>
-        <Button onPress={handleAddLog} disabled={isSavingLog || !foodName.trim()}>
-          {isSavingLog ? <ActivityIndicator size="small" color="white" /> : null}
-          <Icon as={PlusIcon} size={16} className="text-primary-foreground" />
-          <Text>{isSavingLog ? 'Saving…' : 'Log meal'}</Text>
-        </Button>
-      </Surface>
+        <OptionChips
+          layout="wrap"
+          items={[...ADD_FOOD_MODE_OPTIONS]}
+          value={addFoodMode}
+          onValueChange={(value) => setAddFoodMode(value as 'scan' | 'search' | 'manual')}
+        />
 
-      {/* Search catalog */}
-      <SectionHeader title="Search Catalog" />
-      <Surface>
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <Input
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search foods…"
-              returnKeyType="search"
-              onSubmitEditing={() => searchQuery.trim() && searchCatalog(searchQuery.trim())}
-            />
-          </View>
-          <Button
-            variant="outline"
-            size="icon"
-            onPress={() => searchQuery.trim() && searchCatalog(searchQuery.trim())}
-            disabled={isSearchingCatalog || !searchQuery.trim()}
-          >
-            {isSearchingCatalog ? (
-              <ActivityIndicator size="small" />
-            ) : (
-              <Icon as={SearchIcon} size={18} className="text-foreground" />
-            )}
-          </Button>
-        </View>
-      </Surface>
-      {catalogResults.length > 0 ? (
-        <ListGroup>
-          {catalogResults.slice(0, 8).map((food) => (
-            <ListRow
-              key={food.id}
-              title={food.name}
-              subtitle={`${food.brand ? `${food.brand} · ` : ''}${food.servingLabel} · ${Math.round(food.calories)} kcal`}
-              onPress={() => {
-                setFoodName(food.name);
-                setCalories(String(Math.round(food.calories)));
-                setProtein(String(Math.round(food.proteinGrams)));
-                setCarbs(String(Math.round(food.carbsGrams)));
-                setFat(String(Math.round(food.fatGrams)));
-              }}
-            />
-          ))}
-        </ListGroup>
-      ) : null}
+        {addFoodMode === 'scan' ? (
+          <>
+            <View className="flex-row items-center gap-3">
+              <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                <Icon as={BarcodeIcon} size={22} className="text-primary" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[15px] font-semibold text-foreground">
+                  Scan packaged food
+                </Text>
+                <Text className="text-[13px] text-muted-foreground">
+                  Look up nutrition values from the barcode, then review before logging.
+                </Text>
+              </View>
+            </View>
 
-      {/* Barcode */}
-      <SectionHeader title="Barcode Lookup" />
-      <Surface>
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <Input
-              value={barcode}
-              onChangeText={setBarcode}
-              placeholder="Enter barcode digits"
-              keyboardType="numeric"
-            />
-          </View>
-          <Button
-            variant="outline"
-            size="icon"
-            onPress={() => barcode.trim() && lookupBarcode(barcode.trim())}
-            disabled={isLookingUpBarcode || !barcode.trim()}
-          >
-            {isLookingUpBarcode ? (
-              <ActivityIndicator size="small" />
+            {isScannerOpen ? (
+              <View
+                className="overflow-hidden rounded-2xl border border-border/70 bg-muted"
+                style={{ borderCurve: 'continuous' }}>
+                <CameraView
+                  style={{ height: 280, width: '100%' }}
+                  facing="back"
+                  active={isScannerOpen}
+                  barcodeScannerSettings={{
+                    barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'],
+                  }}
+                  onBarcodeScanned={handleBarcodeScanned}
+                />
+                <View className="absolute inset-x-0 bottom-0 bg-background/90 p-3">
+                  <View className="flex-row items-center justify-between gap-3">
+                    <Text className="flex-1 text-[13px] font-medium text-foreground">
+                      Hold the barcode inside the camera view.
+                    </Text>
+                    <Button variant="outline" size="sm" onPress={() => setIsScannerOpen(false)}>
+                      <Text>Cancel</Text>
+                    </Button>
+                  </View>
+                </View>
+              </View>
             ) : (
-              <Icon as={BarcodeIcon} size={18} className="text-foreground" />
+              <Button variant="outline" onPress={openBarcodeScanner}>
+                <Icon as={CameraIcon} size={16} className="text-foreground" />
+                <Text>Scan with camera</Text>
+              </Button>
             )}
-          </Button>
-        </View>
-        {barcodeResult ? (
-          <View className="gap-2 pt-2 border-t-hairline border-separator">
-            <Text className="text-[15px] font-semibold text-foreground">
-              {barcodeResult.food.name}
-            </Text>
-            <Text className="text-[13px] text-muted-foreground">
-              {barcodeResult.food.brand ? `${barcodeResult.food.brand} · ` : ''}
-              {barcodeResult.food.servingLabel} · {Math.round(barcodeResult.food.calories)} kcal · P
-              {Math.round(barcodeResult.food.proteinGrams)} C{Math.round(barcodeResult.food.carbsGrams)} F
-              {Math.round(barcodeResult.food.fatGrams)}
-            </Text>
-            <Button
-              variant="outline"
-              onPress={() => {
-                setFoodName(barcodeResult.food.name);
-                setCalories(String(Math.round(barcodeResult.food.calories)));
-                setProtein(String(Math.round(barcodeResult.food.proteinGrams)));
-                setCarbs(String(Math.round(barcodeResult.food.carbsGrams)));
-                setFat(String(Math.round(barcodeResult.food.fatGrams)));
-              }}
-            >
-              <Text>Use in quick add</Text>
+
+            <View className="flex-row gap-2">
+              <View className="flex-1">
+                <Input
+                  value={barcode}
+                  onChangeText={setBarcode}
+                  placeholder="Or enter barcode digits"
+                  keyboardType="numeric"
+                />
+              </View>
+              <Button
+                variant="outline"
+                size="icon"
+                onPress={() => void handleBarcodeLookup(barcode)}
+                disabled={isLookingUpBarcode || !barcode.trim()}>
+                {isLookingUpBarcode ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <Icon as={BarcodeIcon} size={18} className="text-foreground" />
+                )}
+              </Button>
+            </View>
+
+            {barcodeLookupNotice ? (
+              <Text className="text-[13px] text-muted-foreground">{barcodeLookupNotice}</Text>
+            ) : null}
+
+            {barcodeResult ? (
+              <View className="gap-2 rounded-xl border border-border/70 bg-background/70 p-3">
+                <Text className="text-[15px] font-semibold text-foreground">
+                  {barcodeResult.food.name}
+                </Text>
+                <Text className="text-[13px] text-muted-foreground">
+                  {barcodeResult.food.brand ? `${barcodeResult.food.brand} · ` : ''}
+                  {barcodeResult.food.servingLabel} · {Math.round(barcodeResult.food.calories)} kcal
+                  · P{Math.round(barcodeResult.food.proteinGrams)} C
+                  {Math.round(barcodeResult.food.carbsGrams)} F
+                  {Math.round(barcodeResult.food.fatGrams)}
+                </Text>
+                <Button
+                  variant="outline"
+                  onPress={() => {
+                    applyFoodToQuickAdd(barcodeResult.food);
+                    setAddFoodMode('manual');
+                  }}>
+                  <Text>Review in manual entry</Text>
+                </Button>
+              </View>
+            ) : null}
+          </>
+        ) : null}
+
+        {addFoodMode === 'search' ? (
+          <>
+            <View className="flex-row gap-2">
+              <View className="flex-1">
+                <Input
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search foods..."
+                  returnKeyType="search"
+                  onSubmitEditing={() => searchQuery.trim() && searchCatalog(searchQuery.trim())}
+                />
+              </View>
+              <Button
+                variant="outline"
+                size="icon"
+                onPress={() => searchQuery.trim() && searchCatalog(searchQuery.trim())}
+                disabled={isSearchingCatalog || !searchQuery.trim()}>
+                {isSearchingCatalog ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <Icon as={SearchIcon} size={18} className="text-foreground" />
+                )}
+              </Button>
+            </View>
+
+            {catalogResults.length > 0 ? (
+              <View className="overflow-hidden rounded-2xl border border-separator bg-card">
+                {catalogResults.slice(0, 8).map((food, index) => (
+                  <View key={food.id}>
+                    <ListRow
+                      title={food.name}
+                      subtitle={`${food.brand ? `${food.brand} · ` : ''}${food.servingLabel} · ${Math.round(food.calories)} kcal`}
+                      onPress={() => {
+                        applyFoodToQuickAdd(food);
+                        setAddFoodMode('manual');
+                      }}
+                    />
+                    {index < Math.min(catalogResults.length, 8) - 1 ? (
+                      <View className="ml-4 border-hairline border-separator" />
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="text-[13px] text-muted-foreground">
+                Search by food name, brand, or barcode.
+              </Text>
+            )}
+          </>
+        ) : null}
+
+        {addFoodMode === 'manual' ? (
+          <>
+            <View className="gap-1.5">
+              <Label>Meal type</Label>
+              <OptionChips
+                layout="scroll"
+                size="sm"
+                items={MEAL_TYPE_OPTIONS}
+                value={mealType}
+                onValueChange={(value) => setMealType(value as MealType)}
+              />
+            </View>
+            <View className="gap-1.5">
+              <Label>Food name</Label>
+              <Input value={foodName} onChangeText={setFoodName} placeholder="e.g. Greek yogurt" />
+            </View>
+            <View className="flex-row gap-3">
+              <View className="flex-1 gap-1.5">
+                <Label>Quantity</Label>
+                <Input value={quantity} onChangeText={setQuantity} keyboardType="numeric" />
+              </View>
+              <View className="flex-1 gap-1.5">
+                <Label>Calories</Label>
+                <Input value={calories} onChangeText={setCalories} keyboardType="numeric" />
+              </View>
+            </View>
+            <View className="flex-row gap-3">
+              <View className="flex-1 gap-1.5">
+                <Label>Protein (g)</Label>
+                <Input value={protein} onChangeText={setProtein} keyboardType="numeric" />
+              </View>
+              <View className="flex-1 gap-1.5">
+                <Label>Carbs (g)</Label>
+                <Input value={carbs} onChangeText={setCarbs} keyboardType="numeric" />
+              </View>
+              <View className="flex-1 gap-1.5">
+                <Label>Fat (g)</Label>
+                <Input value={fat} onChangeText={setFat} keyboardType="numeric" />
+              </View>
+            </View>
+            <Button onPress={handleAddLog} disabled={isSavingLog || !foodName.trim()}>
+              {isSavingLog ? <ActivityIndicator size="small" color="white" /> : null}
+              <Icon as={PlusIcon} size={16} className="text-primary-foreground" />
+              <Text>{isSavingLog ? 'Saving…' : 'Log meal'}</Text>
             </Button>
-          </View>
+          </>
         ) : null}
       </Surface>
 

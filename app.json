@@ -12,9 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
     },
@@ -24,6 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ]
@@ -41,6 +40,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Muscle Buddy uses your location to auto-set your training area and find nearby gym buddies."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Muscle Buddy uses the camera to scan food barcodes and prefill nutrition values."
         }
       ],
       "@react-native-community/datetimepicker"
