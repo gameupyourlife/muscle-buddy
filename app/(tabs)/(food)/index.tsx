@@ -131,6 +131,29 @@ export default function FoodScreen() {
     ],
     [totals, goals]
   );
+  const trendSummary = useMemo(() => {
+    const points = trendPoints.slice(-7);
+    const maxCalories = Math.max(1, ...points.map((point) => Math.round(point.calories)));
+    const averageCalories =
+      points.length > 0
+        ? Math.round(points.reduce((sum, point) => sum + point.calories, 0) / points.length)
+        : 0;
+    const scoredPoints = points.filter((point) => point.adherenceScore !== null);
+    const averageAdherence =
+      scoredPoints.length > 0
+        ? Math.round(
+            scoredPoints.reduce((sum, point) => sum + (point.adherenceScore ?? 0), 0) /
+              scoredPoints.length
+          )
+        : null;
+
+    return {
+      points,
+      maxCalories,
+      averageCalories,
+      averageAdherence,
+    };
+  }, [trendPoints]);
 
   const handleAddLog = async () => {
     const payload = {
@@ -644,23 +667,73 @@ export default function FoodScreen() {
       ) : null}
 
       {/* Trend */}
-      {trendPoints.length > 0 ? (
+      {trendSummary.points.length > 0 ? (
         <>
           <SectionHeader title="7-Day Trend" />
-          <ListGroup>
-            {trendPoints.slice(-7).map((point) => (
-              <ListRow
-                key={point.logDate}
-                title={formatDate(point.logDate)}
-                subtitle={`${Math.round(point.calories)} kcal · ${
-                  point.adherenceScore !== null
-                    ? `${Math.round(point.adherenceScore)}% adherence`
-                    : '—'
-                }`}
-                showChevron={false}
-              />
-            ))}
-          </ListGroup>
+          <Surface>
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="gap-1">
+                <Text className="text-[15px] font-semibold text-foreground">
+                  Calories & consistency
+                </Text>
+                <Text className="text-[13px] text-muted-foreground">
+                  Avg {trendSummary.averageCalories} kcal/day
+                </Text>
+              </View>
+              {trendSummary.averageAdherence !== null ? (
+                <Badge variant={trendSummary.averageAdherence >= 80 ? 'default' : 'secondary'}>
+                  <Text>{trendSummary.averageAdherence}% avg</Text>
+                </Badge>
+              ) : null}
+            </View>
+
+            <View className="h-[154px] flex-row items-end gap-2 pt-3">
+              {trendSummary.points.map((point) => {
+                const calories = Math.round(point.calories);
+                const barHeight = Math.max(
+                  12,
+                  Math.round((calories / trendSummary.maxCalories) * 112)
+                );
+                const adherence = point.adherenceScore;
+                const isStrongDay = adherence !== null && adherence >= 80;
+                const isToday = point.logDate === logDate;
+
+                return (
+                  <View key={point.logDate} className="flex-1 items-center gap-2">
+                    <View className="h-[112px] w-full justify-end overflow-hidden rounded-xl bg-muted/60">
+                      <View
+                        className={
+                          isStrongDay
+                            ? 'w-full rounded-xl bg-primary'
+                            : 'w-full rounded-xl bg-muted-foreground/35'
+                        }
+                        style={{ height: barHeight }}
+                      />
+                    </View>
+                    <Text
+                      className={
+                        isToday
+                          ? 'text-[11px] font-bold text-primary'
+                          : 'text-[11px] font-medium text-muted-foreground'
+                      }>
+                      {new Date(`${point.logDate}T00:00:00`).toLocaleDateString(undefined, {
+                        weekday: 'short',
+                      })}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            <View className="flex-row items-center justify-between rounded-xl bg-muted/50 px-3 py-2">
+              <Text className="text-[12px] text-muted-foreground">Best day</Text>
+              <Text
+                className="text-[12px] font-semibold text-foreground"
+                style={{ fontVariant: ['tabular-nums'] }}>
+                {Math.max(...trendSummary.points.map((point) => Math.round(point.calories)))} kcal
+              </Text>
+            </View>
+          </Surface>
         </>
       ) : null}
     </Screen>
