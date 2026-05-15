@@ -500,7 +500,7 @@ export default function BuddiesScreen() {
         <ListGroup>
           {discoverResults.slice(0, 10).map((candidate) => {
             const alreadyOutgoing = outgoingRequests.some(
-              (req) => req.toUserId === candidate.profile.userId
+              (req) => req.toUserId === candidate.profile.userId && req.status === 'pending'
             );
             return (
               <ListRow

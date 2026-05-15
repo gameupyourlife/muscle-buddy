@@ -397,12 +397,12 @@ export async function discoverBuddies(userId: string, filters: DiscoverFilters) 
 
 export async function listBuddyRequests(userId: string) {
   const incoming = await db.query.buddyRequests.findMany({
-    where: eq(buddyRequests.toUserId, userId),
+    where: and(eq(buddyRequests.toUserId, userId), eq(buddyRequests.status, 'pending')),
     orderBy: [desc(buddyRequests.updatedAt)],
   });
 
   const outgoing = await db.query.buddyRequests.findMany({
-    where: eq(buddyRequests.fromUserId, userId),
+    where: and(eq(buddyRequests.fromUserId, userId), eq(buddyRequests.status, 'pending')),
     orderBy: [desc(buddyRequests.updatedAt)],
   });
 

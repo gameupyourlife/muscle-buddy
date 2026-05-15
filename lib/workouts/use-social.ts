@@ -44,6 +44,10 @@ export type BuddyRequest = {
   toProfile: SocialUserPreview | null;
 };
 
+function pendingBuddyRequests(requests: BuddyRequest[]) {
+  return requests.filter((request) => request.status === 'pending');
+}
+
 export type BuddySummary = {
   id: string;
   buddyUserId: string;
@@ -158,8 +162,12 @@ function updateSocialCache(
   const nextCache: SocialCacheSnapshot = {
     profile: patch.profile ?? socialCache?.profile ?? null,
     discoverResults: patch.discoverResults ?? socialCache?.discoverResults ?? [],
-    incomingRequests: patch.incomingRequests ?? socialCache?.incomingRequests ?? [],
-    outgoingRequests: patch.outgoingRequests ?? socialCache?.outgoingRequests ?? [],
+    incomingRequests: pendingBuddyRequests(
+      patch.incomingRequests ?? socialCache?.incomingRequests ?? []
+    ),
+    outgoingRequests: pendingBuddyRequests(
+      patch.outgoingRequests ?? socialCache?.outgoingRequests ?? []
+    ),
     buddies: patch.buddies ?? socialCache?.buddies ?? [],
     meetupIncoming: patch.meetupIncoming ?? socialCache?.meetupIncoming ?? [],
     meetupOutgoing: patch.meetupOutgoing ?? socialCache?.meetupOutgoing ?? [],
@@ -234,8 +242,12 @@ async function resolveCurrentAreaE5() {
 export function useSocialData() {
   const [profile, setProfile] = useState<SocialProfile | null>(socialCache?.profile ?? null);
   const [discoverResults, setDiscoverResults] = useState<DiscoverBuddy[]>(socialCache?.discoverResults ?? []);
-  const [incomingRequests, setIncomingRequests] = useState<BuddyRequest[]>(socialCache?.incomingRequests ?? []);
-  const [outgoingRequests, setOutgoingRequests] = useState<BuddyRequest[]>(socialCache?.outgoingRequests ?? []);
+  const [incomingRequests, setIncomingRequests] = useState<BuddyRequest[]>(
+    pendingBuddyRequests(socialCache?.incomingRequests ?? [])
+  );
+  const [outgoingRequests, setOutgoingRequests] = useState<BuddyRequest[]>(
+    pendingBuddyRequests(socialCache?.outgoingRequests ?? [])
+  );
   const [buddies, setBuddies] = useState<BuddySummary[]>(socialCache?.buddies ?? []);
   const [meetupIncoming, setMeetupIncoming] = useState<SocialMeetupInvite[]>(socialCache?.meetupIncoming ?? []);
   const [meetupOutgoing, setMeetupOutgoing] = useState<SocialMeetupInvite[]>(socialCache?.meetupOutgoing ?? []);
@@ -317,11 +329,14 @@ export function useSocialData() {
     const response = await apiCall<{ incoming: BuddyRequest[]; outgoing: BuddyRequest[] }>(
       '/api/workouts/social/requests'
     );
-    setIncomingRequests(response.incoming);
-    setOutgoingRequests(response.outgoing);
+    const incoming = pendingBuddyRequests(response.incoming);
+    const outgoing = pendingBuddyRequests(response.outgoing);
+
+    setIncomingRequests(incoming);
+    setOutgoingRequests(outgoing);
     lastSyncAtRef.current = updateSocialCache({
-      incomingRequests: response.incoming,
-      outgoingRequests: response.outgoing,
+      incomingRequests: incoming,
+      outgoingRequests: outgoing,
     });
     hasLoadedOnceRef.current = true;
   }, [apiCall]);
