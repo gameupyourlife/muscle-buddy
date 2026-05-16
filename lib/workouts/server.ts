@@ -165,7 +165,16 @@ export async function ensureStarterWorkoutsSeeded() {
           isPublished: true,
         }))
       )
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: planTemplates.id,
+        set: {
+          name: sql`excluded.name`,
+          description: sql`excluded.description`,
+          difficulty: sql`excluded.difficulty`,
+          weeklyTarget: sql`excluded.weekly_target`,
+          isPublished: sql`excluded.is_published`,
+        },
+      });
 
     const templateExerciseRows = STARTER_TEMPLATES.flatMap((template) =>
       template.exercises.map((entry) => ({
@@ -181,7 +190,21 @@ export async function ensureStarterWorkoutsSeeded() {
       }))
     );
 
-    await tx.insert(planTemplateExercises).values(templateExerciseRows).onConflictDoNothing();
+    await tx
+      .insert(planTemplateExercises)
+      .values(templateExerciseRows)
+      .onConflictDoUpdate({
+        target: planTemplateExercises.id,
+        set: {
+          exerciseId: sql`excluded.exercise_id`,
+          dayOfWeek: sql`excluded.day_of_week`,
+          sortOrder: sql`excluded.sort_order`,
+          targetSets: sql`excluded.target_sets`,
+          targetReps: sql`excluded.target_reps`,
+          targetWeight: sql`excluded.target_weight`,
+          notes: sql`excluded.notes`,
+        },
+      });
   });
 }
 
