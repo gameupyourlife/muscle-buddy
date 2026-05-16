@@ -156,9 +156,7 @@ type RefreshDiscoverOptions = {
 let socialCache: SocialCacheSnapshot | null = null;
 let socialLoadPromise: Promise<void> | null = null;
 
-function updateSocialCache(
-  patch: Partial<Omit<SocialCacheSnapshot, 'cachedAt'>>
-) {
+function updateSocialCache(patch: Partial<Omit<SocialCacheSnapshot, 'cachedAt'>>) {
   const nextCache: SocialCacheSnapshot = {
     profile: patch.profile ?? socialCache?.profile ?? null,
     discoverResults: patch.discoverResults ?? socialCache?.discoverResults ?? [],
@@ -192,7 +190,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 function toCsv(values: string[]) {
-  return values.map((entry) => entry.trim()).filter((entry) => entry.length > 0).join(',');
+  return values
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .join(',');
 }
 
 async function resolveCurrentAreaE5() {
@@ -241,7 +242,9 @@ async function resolveCurrentAreaE5() {
 
 export function useSocialData() {
   const [profile, setProfile] = useState<SocialProfile | null>(socialCache?.profile ?? null);
-  const [discoverResults, setDiscoverResults] = useState<DiscoverBuddy[]>(socialCache?.discoverResults ?? []);
+  const [discoverResults, setDiscoverResults] = useState<DiscoverBuddy[]>(
+    socialCache?.discoverResults ?? []
+  );
   const [incomingRequests, setIncomingRequests] = useState<BuddyRequest[]>(
     pendingBuddyRequests(socialCache?.incomingRequests ?? [])
   );
@@ -249,11 +252,17 @@ export function useSocialData() {
     pendingBuddyRequests(socialCache?.outgoingRequests ?? [])
   );
   const [buddies, setBuddies] = useState<BuddySummary[]>(socialCache?.buddies ?? []);
-  const [meetupIncoming, setMeetupIncoming] = useState<SocialMeetupInvite[]>(socialCache?.meetupIncoming ?? []);
-  const [meetupOutgoing, setMeetupOutgoing] = useState<SocialMeetupInvite[]>(socialCache?.meetupOutgoing ?? []);
+  const [meetupIncoming, setMeetupIncoming] = useState<SocialMeetupInvite[]>(
+    socialCache?.meetupIncoming ?? []
+  );
+  const [meetupOutgoing, setMeetupOutgoing] = useState<SocialMeetupInvite[]>(
+    socialCache?.meetupOutgoing ?? []
+  );
   const [messages, setMessages] = useState<SocialMessage[]>([]);
   const [activeBuddyUserId, setActiveBuddyUserId] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<SocialNotification[]>(socialCache?.notifications ?? []);
+  const [notifications, setNotifications] = useState<SocialNotification[]>(
+    socialCache?.notifications ?? []
+  );
 
   const [filters, setFilters] = useState<DiscoverFilters>({
     radiusKm: 10,
@@ -278,9 +287,11 @@ export function useSocialData() {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
   const apiCall = useCallback(
-    async <T,>(path: string, init?: RequestInit): Promise<T> => {
+    async <T>(path: string, init?: RequestInit): Promise<T> => {
       if (!apiBaseUrl) {
-        throw new Error('No API base URL available. Set EXPO_PUBLIC_API_BASE_URL for native builds.');
+        throw new Error(
+          'No API base URL available. Set EXPO_PUBLIC_API_BASE_URL for native builds.'
+        );
       }
 
       const shouldAddNgrokHeader = apiBaseUrl.includes('ngrok');
@@ -303,7 +314,7 @@ export function useSocialData() {
         credentials: 'omit',
       });
 
-      const body = (await response.json().catch(() => null)) as T & { error?: string } | null;
+      const body = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
 
       if (!response.ok) {
         throw new Error(body?.error || `Request failed with status ${response.status}.`);
@@ -319,7 +330,9 @@ export function useSocialData() {
   );
 
   const refreshProfile = useCallback(async () => {
-    const response = await apiCall<{ profile: SocialProfile | null }>('/api/workouts/social/profile');
+    const response = await apiCall<{ profile: SocialProfile | null }>(
+      '/api/workouts/social/profile'
+    );
     setProfile(response.profile);
     lastSyncAtRef.current = updateSocialCache({ profile: response.profile });
     hasLoadedOnceRef.current = true;
@@ -358,9 +371,10 @@ export function useSocialData() {
   }, [apiCall]);
 
   const refreshMeetups = useCallback(async () => {
-    const response = await apiCall<{ incoming: SocialMeetupInvite[]; outgoing: SocialMeetupInvite[] }>(
-      '/api/workouts/social/meetups'
-    );
+    const response = await apiCall<{
+      incoming: SocialMeetupInvite[];
+      outgoing: SocialMeetupInvite[];
+    }>('/api/workouts/social/meetups');
     setMeetupIncoming(response.incoming);
     setMeetupOutgoing(response.outgoing);
     lastSyncAtRef.current = updateSocialCache({
@@ -415,6 +429,7 @@ export function useSocialData() {
         );
 
         setDiscoverResults(response.buddies);
+        setErrorMessage(null);
         lastSyncAtRef.current = updateSocialCache({ discoverResults: response.buddies });
         hasLoadedOnceRef.current = true;
       } catch (error) {
@@ -428,65 +443,75 @@ export function useSocialData() {
     [apiCall, filters]
   );
 
-  const loadInitialData = useCallback(async (options: LoadSocialOptions = {}) => {
-    const { force = false, silent = false } = options;
-    const shouldShowSpinner = !silent || !hasLoadedOnceRef.current;
+  const loadInitialData = useCallback(
+    async (options: LoadSocialOptions = {}) => {
+      const { force = false, silent = false } = options;
+      const shouldShowSpinner = !silent || !hasLoadedOnceRef.current;
 
-    if (!force && socialLoadPromise) {
-      await socialLoadPromise;
-      return;
-    }
-
-    if (
-      !force &&
-      hasLoadedOnceRef.current &&
-      Date.now() - lastSyncAtRef.current < SOCIAL_FOCUS_REFRESH_COOLDOWN_MS
-    ) {
-      return;
-    }
-
-    if (shouldShowSpinner) {
-      setIsLoading(true);
-    }
-
-    if (!silent) {
-      setFeedback(null);
-    }
-    setErrorMessage(null);
-
-    const loadPromise = (async () => {
-      try {
-        await Promise.all([
-          refreshProfile(),
-          refreshRequests(),
-          refreshBuddies(),
-          refreshMeetups(),
-          refreshNotifications(),
-          refreshDiscover(undefined, { silent: true }),
-        ]);
-      } catch (error) {
-        setErrorMessage(getErrorMessage(error, 'Could not load social data.'));
+      if (!force && socialLoadPromise) {
+        await socialLoadPromise;
+        return;
       }
-    })();
 
-    socialLoadPromise = loadPromise;
-
-    try {
-      await loadPromise;
-    } finally {
-      if (socialLoadPromise === loadPromise) {
-        socialLoadPromise = null;
+      if (
+        !force &&
+        hasLoadedOnceRef.current &&
+        Date.now() - lastSyncAtRef.current < SOCIAL_FOCUS_REFRESH_COOLDOWN_MS
+      ) {
+        return;
       }
 
       if (shouldShowSpinner) {
-        setIsLoading(false);
+        setIsLoading(true);
       }
-    }
-  }, [refreshBuddies, refreshDiscover, refreshMeetups, refreshNotifications, refreshProfile, refreshRequests]);
+
+      if (!silent) {
+        setFeedback(null);
+      }
+      setErrorMessage(null);
+
+      const loadPromise = (async () => {
+        try {
+          await Promise.all([
+            refreshProfile(),
+            refreshRequests(),
+            refreshBuddies(),
+            refreshMeetups(),
+            refreshNotifications(),
+            refreshDiscover(undefined, { silent: true }),
+          ]);
+        } catch (error) {
+          setErrorMessage(getErrorMessage(error, 'Could not load social data.'));
+        }
+      })();
+
+      socialLoadPromise = loadPromise;
+
+      try {
+        await loadPromise;
+      } finally {
+        if (socialLoadPromise === loadPromise) {
+          socialLoadPromise = null;
+        }
+
+        if (shouldShowSpinner) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [
+      refreshBuddies,
+      refreshDiscover,
+      refreshMeetups,
+      refreshNotifications,
+      refreshProfile,
+      refreshRequests,
+    ]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      if (!hasLoadedOnceRef.current) {
+      if (!hasLoadedOnceRef.current || !profile) {
         void loadInitialData({ force: true });
         return;
       }
@@ -502,7 +527,7 @@ export function useSocialData() {
       return () => {
         interaction.cancel();
       };
-    }, [loadInitialData])
+    }, [loadInitialData, profile])
   );
 
   const refreshNow = useCallback(async () => {
@@ -533,16 +558,20 @@ export function useSocialData() {
       try {
         const gpsArea = await resolveCurrentAreaE5();
 
-        const response = await apiCall<{ profile: SocialProfile | null }>('/api/workouts/social/profile', {
-          method: 'PUT',
-          body: JSON.stringify({
-            ...input,
-            areaLatE5: gpsArea.areaLatE5,
-            areaLngE5: gpsArea.areaLngE5,
-          }),
-        });
+        const response = await apiCall<{ profile: SocialProfile | null }>(
+          '/api/workouts/social/profile',
+          {
+            method: 'PUT',
+            body: JSON.stringify({
+              ...input,
+              areaLatE5: gpsArea.areaLatE5,
+              areaLngE5: gpsArea.areaLngE5,
+            }),
+          }
+        );
 
         setProfile(response.profile);
+        lastSyncAtRef.current = updateSocialCache({ profile: response.profile });
 
         if (gpsArea.warning) {
           setFeedback(`Social profile saved. ${gpsArea.warning}`);
@@ -606,6 +635,7 @@ export function useSocialData() {
   const openChat = useCallback(
     async (buddyUserId: string) => {
       setActiveBuddyUserId(buddyUserId);
+      setMessages([]);
       setErrorMessage(null);
 
       try {
@@ -661,7 +691,12 @@ export function useSocialData() {
 
   const saveAvailability = useCallback(
     async (payload: {
-      recurringSlots: Array<{ dayOfWeek: number; startMinute: number; endMinute: number; isActive?: boolean }>;
+      recurringSlots: Array<{
+        dayOfWeek: number;
+        startMinute: number;
+        endMinute: number;
+        isActive?: boolean;
+      }>;
       oneOffSlots: Array<{ startsAt: string; endsAt: string; status?: 'available' | 'busy' }>;
     }) => {
       setErrorMessage(null);
@@ -728,7 +763,9 @@ export function useSocialData() {
   );
 
   const markAllNotificationsRead = useCallback(async () => {
-    const unread = notifications.filter((entry) => entry.status === 'unread').map((entry) => entry.id);
+    const unread = notifications
+      .filter((entry) => entry.status === 'unread')
+      .map((entry) => entry.id);
 
     if (unread.length === 0) {
       return;
@@ -737,10 +774,13 @@ export function useSocialData() {
     setErrorMessage(null);
 
     try {
-      const response = await apiCall<{ notifications: SocialNotification[] }>('/api/workouts/social/notifications', {
-        method: 'PATCH',
-        body: JSON.stringify({ notificationIds: unread }),
-      });
+      const response = await apiCall<{ notifications: SocialNotification[] }>(
+        '/api/workouts/social/notifications',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ notificationIds: unread }),
+        }
+      );
 
       setNotifications(response.notifications);
       setFeedback('Notifications marked as read.');
@@ -748,6 +788,53 @@ export function useSocialData() {
       setErrorMessage(getErrorMessage(error, 'Could not update notifications.'));
     }
   }, [apiCall, notifications]);
+
+  const markMessageNotificationsRead = useCallback(
+    async (fromUserId?: string) => {
+      const unreadMessageIds = notifications
+        .filter((entry) => {
+          if (entry.status !== 'unread' || entry.type !== 'new_message') {
+            return false;
+          }
+
+          if (!fromUserId) {
+            return true;
+          }
+
+          if (!entry.data) {
+            return false;
+          }
+
+          try {
+            const data = JSON.parse(entry.data) as { fromUserId?: string };
+            return data.fromUserId === fromUserId;
+          } catch {
+            return false;
+          }
+        })
+        .map((entry) => entry.id);
+
+      if (unreadMessageIds.length === 0) {
+        return;
+      }
+
+      try {
+        const response = await apiCall<{ notifications: SocialNotification[] }>(
+          '/api/workouts/social/notifications',
+          {
+            method: 'PATCH',
+            body: JSON.stringify({ notificationIds: unreadMessageIds }),
+          }
+        );
+
+        setNotifications(response.notifications);
+        lastSyncAtRef.current = updateSocialCache({ notifications: response.notifications });
+      } catch (error) {
+        setErrorMessage(getErrorMessage(error, 'Could not update message notifications.'));
+      }
+    },
+    [apiCall, notifications]
+  );
 
   const blockBuddyUser = useCallback(
     async (blockedUserId: string, reason?: string) => {
@@ -822,6 +909,7 @@ export function useSocialData() {
     createMeetup,
     respondMeetup,
     markAllNotificationsRead,
+    markMessageNotificationsRead,
     blockBuddyUser,
     reportBuddyUser,
     setFilters,

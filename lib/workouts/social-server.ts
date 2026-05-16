@@ -1,16 +1,16 @@
 import { and, asc, desc, eq, inArray, or } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import {
-    buddies,
-    buddyRequests,
-    socialBlocks,
-    socialMeetupInvites,
-    socialMessages,
-    socialNotifications,
-    socialOneOffAvailability,
-    socialRecurringAvailability,
-    socialReports,
-    user,
+  buddies,
+  buddyRequests,
+  socialBlocks,
+  socialMeetupInvites,
+  socialMessages,
+  socialNotifications,
+  socialOneOffAvailability,
+  socialRecurringAvailability,
+  socialReports,
+  user,
 } from '@/lib/db/schema';
 
 type UserRow = typeof user.$inferSelect;
@@ -173,7 +173,7 @@ function distanceKm(latA: number, lngA: number, latB: number, lngB: number) {
 }
 
 function orderUserIds(userAId: string, userBId: string) {
-  return userAId < userBId ? [userAId, userBId] as const : [userBId, userAId] as const;
+  return userAId < userBId ? ([userAId, userBId] as const) : ([userBId, userAId] as const);
 }
 
 async function isEitherUserBlocked(userId: string, otherUserId: string) {
@@ -356,7 +356,10 @@ export async function discoverBuddies(userId: string, filters: DiscoverFilters) 
         return false;
       }
 
-      if (requestedExperience && candidate.experienceLevel.trim().toLowerCase() !== requestedExperience) {
+      if (
+        requestedExperience &&
+        candidate.experienceLevel.trim().toLowerCase() !== requestedExperience
+      ) {
         return false;
       }
 
@@ -449,11 +452,14 @@ export async function sendBuddyRequest(userId: string, input: SendBuddyRequestIn
         })
         .where(eq(buddyRequests.id, reversePending.id));
 
-      await tx.insert(buddies).values({
-        id: createId(),
-        userAId,
-        userBId,
-      }).onConflictDoNothing();
+      await tx
+        .insert(buddies)
+        .values({
+          id: createId(),
+          userAId,
+          userBId,
+        })
+        .onConflictDoNothing();
 
       await createNotification({
         userId: toUserId,
@@ -645,7 +651,10 @@ export async function sendMessage(userId: string, buddyUserId: string, body: str
 export async function getAvailability(userId: string) {
   const recurring = await db.query.socialRecurringAvailability.findMany({
     where: eq(socialRecurringAvailability.userId, userId),
-    orderBy: [asc(socialRecurringAvailability.dayOfWeek), asc(socialRecurringAvailability.startMinute)],
+    orderBy: [
+      asc(socialRecurringAvailability.dayOfWeek),
+      asc(socialRecurringAvailability.startMinute),
+    ],
   });
 
   const oneOff = await db.query.socialOneOffAvailability.findMany({
@@ -683,10 +692,17 @@ export async function updateAvailability(userId: string, input: UpdateAvailabili
         status: slot.status ?? 'available',
       };
     })
-    .filter((slot) => !Number.isNaN(slot.startsAt.getTime()) && !Number.isNaN(slot.endsAt.getTime()) && slot.endsAt > slot.startsAt);
+    .filter(
+      (slot) =>
+        !Number.isNaN(slot.startsAt.getTime()) &&
+        !Number.isNaN(slot.endsAt.getTime()) &&
+        slot.endsAt > slot.startsAt
+    );
 
   await db.transaction(async (tx) => {
-    await tx.delete(socialRecurringAvailability).where(eq(socialRecurringAvailability.userId, userId));
+    await tx
+      .delete(socialRecurringAvailability)
+      .where(eq(socialRecurringAvailability.userId, userId));
     await tx.delete(socialOneOffAvailability).where(eq(socialOneOffAvailability.userId, userId));
 
     if (recurringSlots.length > 0) {
@@ -760,7 +776,10 @@ export async function createMeetupInvite(userId: string, input: CreateMeetupInvi
 
 export async function respondToMeetupInvite(userId: string, input: RespondMeetupInviteInput) {
   const invite = await db.query.socialMeetupInvites.findFirst({
-    where: and(eq(socialMeetupInvites.id, input.inviteId), eq(socialMeetupInvites.receiverUserId, userId)),
+    where: and(
+      eq(socialMeetupInvites.id, input.inviteId),
+      eq(socialMeetupInvites.receiverUserId, userId)
+    ),
   });
 
   if (!invite) {
@@ -787,7 +806,10 @@ export async function respondToMeetupInvite(userId: string, input: RespondMeetup
     userId: invite.senderUserId,
     type: nextStatus === 'accepted' ? 'meetup_invite_accepted' : 'meetup_invite_declined',
     title: nextStatus === 'accepted' ? 'Meetup accepted' : 'Meetup declined',
-    body: nextStatus === 'accepted' ? 'Your meetup invite was accepted.' : 'Your meetup invite was declined.',
+    body:
+      nextStatus === 'accepted'
+        ? 'Your meetup invite was accepted.'
+        : 'Your meetup invite was declined.',
     data: JSON.stringify({ byUserId: userId }),
   });
 
@@ -858,7 +880,12 @@ export async function blockUser(userId: string, blockedUserId: string, reason?: 
   };
 }
 
-export async function reportUser(userId: string, reportedUserId: string, category: string, details?: string | null) {
+export async function reportUser(
+  userId: string,
+  reportedUserId: string,
+  category: string,
+  details?: string | null
+) {
   if (!reportedUserId || reportedUserId === userId) {
     throw new Error('reportedUserId must be another user.');
   }

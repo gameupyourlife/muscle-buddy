@@ -12,6 +12,7 @@ type ListRowProps = Omit<PressableProps, 'children'> & {
   icon?: LucideIcon;
   iconTint?: string;
   iconBg?: string;
+  leading?: React.ReactNode;
   destructive?: boolean;
   loading?: boolean;
   showChevron?: boolean;
@@ -29,6 +30,7 @@ function ListRow({
   icon,
   iconTint,
   iconBg,
+  leading,
   destructive,
   loading,
   showChevron,
@@ -50,24 +52,26 @@ function ListRow({
         'min-h-[52px] flex-row items-center gap-3 px-4 py-3',
         isInteractive && 'active:bg-surface-muted',
         disabled && 'opacity-50',
-        className,
+        className
       )}
-      {...rest}
-    >
-      {icon ? (
+      {...rest}>
+      {leading}
+
+      {!leading && icon ? (
         <View
           className={cn(
             'h-8 w-8 items-center justify-center rounded-lg',
-            !iconBg && 'bg-primary/10',
+            !iconBg && 'bg-primary/10'
           )}
-          style={iconBg ? { backgroundColor: iconBg, borderCurve: 'continuous' } : { borderCurve: 'continuous' }}
-        >
+          style={
+            iconBg
+              ? { backgroundColor: iconBg, borderCurve: 'continuous' }
+              : { borderCurve: 'continuous' }
+          }>
           <Icon
             as={icon}
             size={18}
-            className={cn(
-              !iconTint && (destructive ? 'text-destructive' : 'text-primary'),
-            )}
+            className={cn(!iconTint && (destructive ? 'text-destructive' : 'text-primary'))}
             color={iconTint}
           />
         </View>
@@ -76,11 +80,10 @@ function ListRow({
       <View className="flex-1 gap-0.5">
         <Text
           className={cn(
-            'text-[16px] leading-5 font-medium',
-            destructive ? 'text-destructive' : 'text-foreground',
+            'text-[16px] font-medium leading-5',
+            destructive ? 'text-destructive' : 'text-foreground'
           )}
-          numberOfLines={1}
-        >
+          numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
@@ -104,9 +107,7 @@ function ListRow({
 
       {loading ? <ActivityIndicator size="small" /> : null}
 
-      {selected ? (
-        <View className="h-2 w-2 rounded-full bg-primary" />
-      ) : null}
+      {selected ? <View className="h-2 w-2 rounded-full bg-primary" /> : null}
 
       {showChevronComputed && !loading ? (
         <Icon as={ChevronRightIcon} size={16} className="text-muted-foreground" />
