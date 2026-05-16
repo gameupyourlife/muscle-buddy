@@ -17,7 +17,9 @@ function toDateParts(date: Date, timeZone: string) {
   const year = Number(parts.find((part) => part.type === 'year')?.value ?? Number.NaN);
   const month = Number(parts.find((part) => part.type === 'month')?.value ?? Number.NaN);
   const day = Number(parts.find((part) => part.type === 'day')?.value ?? Number.NaN);
-  const weekday = parts.find((part) => part.type === 'weekday')?.value as keyof typeof WEEKDAY_INDEX | undefined;
+  const weekday = parts.find((part) => part.type === 'weekday')?.value as
+    | keyof typeof WEEKDAY_INDEX
+    | undefined;
 
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day) || !weekday) {
     throw new Error('Could not resolve week key parts.');
@@ -48,6 +50,26 @@ export function isConsecutiveWeek(previousWeekKey: string, currentWeekKey: strin
 
   const difference = Math.round((current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24));
   return difference === 7;
+}
+
+export function getElapsedWeekKeys(startWeekKey: string, endWeekKey: string) {
+  const start = new Date(`${startWeekKey}T00:00:00.000Z`);
+  const end = new Date(`${endWeekKey}T00:00:00.000Z`);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return [] as string[];
+  }
+
+  const weekKeys: string[] = [];
+  const cursor = new Date(start);
+  cursor.setUTCDate(cursor.getUTCDate() + 7);
+
+  while (cursor < end) {
+    weekKeys.push(toIsoDate(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 7);
+  }
+
+  return weekKeys;
 }
 
 export function getStreakMultiplier(streak: number) {

@@ -1,20 +1,26 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import {
-    exerciseCatalog,
-    planTemplateExercises,
-    planTemplates,
-    trainingPlanExercises,
-    trainingPlans,
-    userGamification,
-    weeklyProgress,
-    workoutSessions,
-    xpEvents,
+  exerciseCatalog,
+  planTemplateExercises,
+  planTemplates,
+  trainingPlanExercises,
+  trainingPlans,
+  userGamification,
+  weeklyProgress,
+  workoutSessions,
+  xpEvents,
 } from '@/lib/db/schema';
 import { toCharacterSelectionRecord } from '@/lib/workouts/character';
 import { WORKOUT_XP_CONFIG } from '@/lib/workouts/constants';
 import { STARTER_EXERCISES, STARTER_TEMPLATES } from '@/lib/workouts/starter-data';
-import { calculateWorkoutXp, getLevelFromXp, getWeekKey, isConsecutiveWeek } from '@/lib/workouts/utils';
+import {
+  calculateWorkoutXp,
+  getElapsedWeekKeys,
+  getLevelFromXp,
+  getWeekKey,
+  isConsecutiveWeek,
+} from '@/lib/workouts/utils';
 
 export type CustomPlanExerciseInput = {
   exerciseId: string;
@@ -36,6 +42,98 @@ function requireRow<T>(row: T | undefined, errorMessage: string) {
   }
 
   return row;
+}
+
+async function applyXpDecayForMissedWeeksWithClient(
+  client: Pick<typeof db, 'query' | 'insert' | 'update'>,
+  userId: string,
+  currentWeekKey: string
+) {
+  const gamificationState = await client.query.userGamification.findFirst({
+    where: eq(userGamification.userId, userId),
+  });
+
+  if (!gamificationState?.lastQualifiedWeekKey) {
+    return gamificationState ?? null;
+  }
+
+  const elapsedWeekKeys = getElapsedWeekKeys(
+    gamificationState.lastQualifiedWeekKey,
+    currentWeekKey
+  );
+
+  if (elapsedWeekKeys.length === 0) {
+    return gamificationState;
+  }
+
+  const weeklyStates = await client.query.weeklyProgress.findMany({
+    where: eq(weeklyProgress.userId, userId),
+  });
+  const weeklyStateByKey = new Map(weeklyStates.map((week) => [week.weekKey, week]));
+
+  let nextTotalXp = gamificationState.totalXp;
+  let missedAnElapsedWeek = false;
+  let appliedDecay = false;
+
+  for (const weekKey of elapsedWeekKeys) {
+    const weeklyState = weeklyStateByKey.get(weekKey);
+
+    if (weeklyState?.qualifiedAt) {
+      continue;
+    }
+
+    missedAnElapsedWeek = true;
+
+    const idempotencyKey = `xp-decay:${userId}:${weekKey}`;
+    const decayXp = Math.min(nextTotalXp, WORKOUT_XP_CONFIG.missedWeekDecayXp);
+
+    if (decayXp <= 0) {
+      continue;
+    }
+
+    const insertedEvents = await client
+      .insert(xpEvents)
+      .values({
+        id: createId(),
+        userId,
+        weekKey,
+        eventType: 'missed_week_decay',
+        totalXp: -decayXp,
+        idempotencyKey,
+      })
+      .onConflictDoNothing()
+      .returning({ id: xpEvents.id });
+
+    if (insertedEvents.length === 0) {
+      continue;
+    }
+
+    nextTotalXp -= decayXp;
+    appliedDecay = true;
+  }
+
+  if (!appliedDecay && (!missedAnElapsedWeek || gamificationState.currentStreak === 0)) {
+    return gamificationState;
+  }
+
+  const updatedRows = await client
+    .update(userGamification)
+    .set({
+      totalXp: nextTotalXp,
+      level: getLevelFromXp(nextTotalXp),
+      currentStreak: 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(userGamification.userId, userId))
+    .returning();
+
+  return updatedRows[0] ?? gamificationState;
+}
+
+async function applyXpDecayForMissedWeeks(userId: string, currentWeekKey: string) {
+  return db.transaction(async (tx) =>
+    applyXpDecayForMissedWeeksWithClient(tx, userId, currentWeekKey)
+  );
 }
 
 export async function ensureStarterWorkoutsSeeded() {
@@ -210,7 +308,10 @@ export async function completeWorkoutSession(input: {
 
     const activePlan = requiredSession.planId
       ? await tx.query.trainingPlans.findFirst({
-          where: and(eq(trainingPlans.id, requiredSession.planId), eq(trainingPlans.userId, input.userId)),
+          where: and(
+            eq(trainingPlans.id, requiredSession.planId),
+            eq(trainingPlans.userId, input.userId)
+          ),
         })
       : await tx.query.trainingPlans.findFirst({
           where: and(eq(trainingPlans.userId, input.userId), eq(trainingPlans.isActive, true)),
@@ -231,6 +332,8 @@ export async function completeWorkoutSession(input: {
         longestStreak: 0,
       })
       .onConflictDoNothing();
+
+    await applyXpDecayForMissedWeeksWithClient(tx, input.userId, weekKey);
 
     if (existingCompletion) {
       const existingGamification = await tx.query.userGamification.findFirst({
@@ -416,6 +519,7 @@ export async function getWorkoutDashboard(userId: string, timeZone?: string) {
 
   const zone = timeZone || activePlan?.timeZone || 'UTC';
   const weekKey = getWeekKey(new Date(), zone);
+  await applyXpDecayForMissedWeeks(userId, weekKey);
 
   const [gamificationState, weeklyState, recentSessions] = await Promise.all([
     db.query.userGamification.findFirst({ where: eq(userGamification.userId, userId) }),
