@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '@/lib/api/base-url';
+import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import { NUTRITION_MEAL_TYPES } from '@/lib/workouts/constants';
 import { useFocusEffect } from 'expo-router';
@@ -225,7 +225,7 @@ export function useFoodTrackingData() {
         headers.set('Cookie', cookies);
       }
 
-      const response = await fetch(`${apiBaseUrl}${path}`, {
+      const response = await fetch(getApiRequestUrl(path), {
         ...init,
         headers,
         credentials: 'omit',

@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '@/lib/api/base-url';
+import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import * as Location from 'expo-location';
 import { useFocusEffect } from 'expo-router';
@@ -308,7 +308,7 @@ export function useSocialData() {
         headers.set('Cookie', cookies);
       }
 
-      const response = await fetch(`${apiBaseUrl}${path}`, {
+      const response = await fetch(getApiRequestUrl(path), {
         ...init,
         headers,
         credentials: 'omit',

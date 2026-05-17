@@ -15,6 +15,31 @@ function trimTrailingSlash(value: string) {
   return value.endsWith('/') ? value.slice(0, -1) : value;
 }
 
+function getBaseUrlFromHostUri(hostUri: string) {
+  const normalizedHostUri = hostUri.trim();
+
+  if (!normalizedHostUri) {
+    return null;
+  }
+
+  if (/^https?:\/\//.test(normalizedHostUri)) {
+    try {
+      const url = new URL(normalizedHostUri);
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return null;
+    }
+  }
+
+  const host = normalizedHostUri.replace(/^exp:\/\//, '').split('/')[0];
+
+  if (!host) {
+    return null;
+  }
+
+  return `http://${host}`;
+}
+
 export function getApiBaseUrl() {
   const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
 
@@ -34,11 +59,21 @@ export function getApiBaseUrl() {
     return null;
   }
 
-  const host = hostUri.replace(/^https?:\/\//, '').replace(/^exp:\/\//, '').split('/')[0];
+  return getBaseUrlFromHostUri(hostUri);
+}
 
-  if (!host) {
-    return null;
+export function getApiRequestUrl(path: string) {
+  const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+
+  if (configuredBaseUrl) {
+    return `${trimTrailingSlash(configuredBaseUrl)}${path}`;
   }
 
-  return `http://${host}`;
+  if (Platform.OS === 'web') {
+    return path;
+  }
+
+  const apiBaseUrl = getApiBaseUrl();
+
+  return apiBaseUrl ? `${apiBaseUrl}${path}` : path;
 }

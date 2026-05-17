@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Screen, SectionHeader, Surface } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
-import { getApiBaseUrl } from '@/lib/api/base-url';
+import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -36,7 +36,7 @@ export default function DevOptionsScreen() {
   const [status, setStatus] = useState<SendStatus>(null);
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
-  const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/send-email` : null;
+  const endpoint = apiBaseUrl ? getApiRequestUrl('/api/send-email') : null;
 
   useEffect(() => {
     const userEmail = session?.user?.email;

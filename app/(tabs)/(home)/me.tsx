@@ -12,7 +12,7 @@ import { ListGroup, Screen, SectionHeader, Surface } from '@/components/ui/scree
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { getApiBaseUrl } from '@/lib/api/base-url';
+import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import {
     SOCIAL_DAY_OPTIONS,
@@ -195,7 +195,7 @@ export default function MeScreen() {
         headers.set('Cookie', cookies);
       }
 
-      const response = await fetch(`${apiBaseUrl}${path}`, {
+      const response = await fetch(getApiRequestUrl(path), {
         ...init,
         headers,
         credentials: 'omit',

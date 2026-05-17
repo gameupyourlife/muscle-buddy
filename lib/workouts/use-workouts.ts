@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '@/lib/api/base-url';
+import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import {
   type CharacterId,
@@ -242,7 +242,7 @@ export async function preloadWorkoutsData(options: PreloadWorkoutsOptions = {}) 
       headers.set('Cookie', cookies);
     }
 
-    const response = await fetch(`${apiBaseUrl}${path}`, {
+    const response = await fetch(getApiRequestUrl(path), {
       ...init,
       headers,
       credentials: 'omit',
@@ -413,7 +413,7 @@ export function useWorkoutsData() {
         headers.set('Cookie', cookies);
       }
 
-      const response = await fetch(`${apiBaseUrl}${path}`, {
+      const response = await fetch(getApiRequestUrl(path), {
         ...init,
         headers,
         credentials: 'omit',
