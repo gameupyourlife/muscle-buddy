@@ -37,6 +37,10 @@ function getBaseUrlFromHostUri(hostUri: string) {
     return null;
   }
 
+  if (host.endsWith('.exp.direct')) {
+    return `https://${host}`;
+  }
+
   return `http://${host}`;
 }
 
