@@ -12,9 +12,12 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.maxbaa.muscle-buddy"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +27,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -46,6 +50,24 @@
         "expo-camera",
         {
           "cameraPermission": "Muscle Buddy uses the camera to scan food barcodes and prefill nutrition values."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {
+                "name": "ExpoCameraBarcodeScanning",
+                "path": "../node_modules/expo-camera/ios"
+              },
+              {
+                "name": "ZXingObjC",
+                "version": "3.6.9",
+                "modular_headers": true
+              }
+            ]
+          }
         }
       ],
       "@react-native-community/datetimepicker"
