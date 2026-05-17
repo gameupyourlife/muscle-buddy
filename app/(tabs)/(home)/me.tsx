@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
+import { createAuthenticatedRequestInit } from '@/lib/api/authenticated-request';
 import { authClient } from '@/lib/auth-client';
 import {
     SOCIAL_DAY_OPTIONS,
@@ -181,25 +182,10 @@ export default function MeScreen() {
         throw new Error('No API base URL available. Set EXPO_PUBLIC_API_BASE_URL for native builds.');
       }
 
-      const shouldAddNgrokHeader = apiBaseUrl.includes('ngrok');
-      const cookies = authClient.getCookie();
-      const headers = new Headers(init?.headers);
-
-      headers.set('Content-Type', 'application/json');
-
-      if (shouldAddNgrokHeader) {
-        headers.set('ngrok-skip-browser-warning', 'true');
-      }
-
-      if (cookies) {
-        headers.set('Cookie', cookies);
-      }
-
-      const response = await fetch(getApiRequestUrl(path), {
-        ...init,
-        headers,
-        credentials: 'omit',
-      });
+      const response = await fetch(
+        getApiRequestUrl(path),
+        createAuthenticatedRequestInit(apiBaseUrl, init)
+      );
 
       const body = (await response.json().catch(() => null)) as T & { error?: string } | null;
 

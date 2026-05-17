@@ -1,5 +1,5 @@
 import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
-import { authClient } from '@/lib/auth-client';
+import { createAuthenticatedRequestInit } from '@/lib/api/authenticated-request';
 import * as Location from 'expo-location';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -294,25 +294,10 @@ export function useSocialData() {
         );
       }
 
-      const shouldAddNgrokHeader = apiBaseUrl.includes('ngrok');
-      const cookies = authClient.getCookie();
-      const headers = new Headers(init?.headers);
-
-      headers.set('Content-Type', 'application/json');
-
-      if (shouldAddNgrokHeader) {
-        headers.set('ngrok-skip-browser-warning', 'true');
-      }
-
-      if (cookies) {
-        headers.set('Cookie', cookies);
-      }
-
-      const response = await fetch(getApiRequestUrl(path), {
-        ...init,
-        headers,
-        credentials: 'omit',
-      });
+      const response = await fetch(
+        getApiRequestUrl(path),
+        createAuthenticatedRequestInit(apiBaseUrl, init)
+      );
 
       const body = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
 

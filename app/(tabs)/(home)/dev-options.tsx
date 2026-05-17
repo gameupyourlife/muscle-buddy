@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Screen, SectionHeader, Surface } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
+import { createAuthenticatedRequestInit } from '@/lib/api/authenticated-request';
 import { getApiBaseUrl, getApiRequestUrl } from '@/lib/api/base-url';
 import { authClient } from '@/lib/auth-client';
 import { useEffect, useMemo, useState } from 'react';
@@ -51,24 +52,21 @@ export default function DevOptionsScreen() {
     !isSending;
 
   const handleSend = async () => {
-    if (!canSend || !endpoint) return;
+    if (!canSend || !endpoint || !apiBaseUrl) return;
     setStatus(null);
     setIsSending(true);
     try {
-      const cookies = authClient.getCookie();
-      const headers = new Headers({ 'Content-Type': 'application/json' });
-      if (cookies) headers.set('Cookie', cookies);
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        credentials: 'omit',
-        body: JSON.stringify({
-          to: to.trim(),
-          subject: subject.trim(),
-          text: message.trim(),
-        }),
-      });
+      const response = await fetch(
+        endpoint,
+        createAuthenticatedRequestInit(apiBaseUrl, {
+          method: 'POST',
+          body: JSON.stringify({
+            to: to.trim(),
+            subject: subject.trim(),
+            text: message.trim(),
+          }),
+        })
+      );
 
       const body = (await response.json().catch(() => null)) as
         | { id?: string; error?: string }

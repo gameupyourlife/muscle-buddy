@@ -5,6 +5,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from './db/schema';
 import { sendEmail } from "./send-email";
 
+const configuredAuthUrl = process.env.BETTER_AUTH_URL?.trim();
+
 export const auth = betterAuth({
     appName: "Muscle Buddy",
     plugins: [expo()],
@@ -30,12 +32,16 @@ export const auth = betterAuth({
         provider: "pg", // or "pg" or "mysql",
         schema: schema
     }),
-    trustedOrigins: ["muscle-buddy://*",
+    trustedOrigins: [
+        "muscle-buddy://*",
+        ...(configuredAuthUrl ? [configuredAuthUrl] : []),
         // Development mode - Expo's exp:// scheme with local IP ranges
         ...(process.env.NODE_ENV === "development" ? [
             "exp://",                      // Trust all Expo URLs (prefix matching)
             "exp://**",                    // Trust all Expo URLs (wildcard matching)
             "exp://192.168.*.*:*/**",      // Trust 192.168.x.x IP range with any port and path
+            "http://localhost:*",
+            "http://127.0.0.1:*",
         ] : [])
     ],
     user: {
