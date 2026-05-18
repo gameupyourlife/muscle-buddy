@@ -21,7 +21,6 @@ import {
   FlameIcon,
   PlusIcon,
   SaladIcon,
-  SearchIcon,
   Trash2Icon,
 } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
@@ -46,7 +45,6 @@ function formatDate(iso: string) {
 
 const ADD_FOOD_MODE_OPTIONS = [
   { value: 'scan', label: 'Scan' },
-  { value: 'search', label: 'Search' },
   { value: 'manual', label: 'Manual' },
 ] as const;
 
@@ -57,13 +55,11 @@ export default function FoodScreen() {
     logs,
     summary,
     trendPoints,
-    catalogResults,
     barcodeResult,
     mealTemplates,
     isLoading,
     isSavingGoals,
     isSavingLog,
-    isSearchingCatalog,
     isLookingUpBarcode,
     feedback,
     errorMessage,
@@ -73,7 +69,6 @@ export default function FoodScreen() {
     saveGoals,
     addFoodLog,
     removeFoodLog,
-    searchCatalog,
     lookupBarcode,
     applyMealTemplate,
   } = useFoodTrackingData();
@@ -91,9 +86,8 @@ export default function FoodScreen() {
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [barcode, setBarcode] = useState('');
-  const [addFoodMode, setAddFoodMode] = useState<'scan' | 'search' | 'manual'>('scan');
+  const [addFoodMode, setAddFoodMode] = useState<'scan' | 'manual'>('scan');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [barcodeLookupNotice, setBarcodeLookupNotice] = useState<string | null>(null);
   const scanLockRef = useRef(false);
@@ -401,9 +395,11 @@ export default function FoodScreen() {
               key={log.id}
               icon={SaladIcon}
               title={log.foodName}
-              subtitle={`${log.mealType} · ${log.quantity}× · ${Math.round(log.calories)} kcal · P${Math.round(
-                log.proteinGrams
-              )} C${Math.round(log.carbsGrams)} F${Math.round(log.fatGrams)}`}
+              subtitle={`${log.mealType} · ${log.quantity}× · ${Math.round(
+                log.calories * log.quantity
+              )} kcal · P${Math.round(log.proteinGrams * log.quantity)} C${Math.round(
+                log.carbsGrams * log.quantity
+              )} F${Math.round(log.fatGrams * log.quantity)}`}
               trailing={
                 <Button
                   variant="ghost"
@@ -431,7 +427,7 @@ export default function FoodScreen() {
             compact
             icon={SaladIcon}
             title="Nothing logged"
-            description="Scan, search, or add your first meal below."
+            description="Scan or add your first meal below."
           />
         </Surface>
       )}
@@ -439,14 +435,14 @@ export default function FoodScreen() {
       {/* Add food */}
       <SectionHeader
         title="Add Food"
-        description="Scan a package, search your catalog, or enter macros manually."
+        description="Scan a package or enter macros manually."
       />
       <Surface>
         <OptionChips
           layout="wrap"
           items={[...ADD_FOOD_MODE_OPTIONS]}
           value={addFoodMode}
-          onValueChange={(value) => setAddFoodMode(value as 'scan' | 'search' | 'manual')}
+          onValueChange={(value) => setAddFoodMode(value as 'scan' | 'manual')}
         />
 
         {addFoodMode === 'scan' ? (
@@ -544,57 +540,6 @@ export default function FoodScreen() {
                 </Button>
               </View>
             ) : null}
-          </>
-        ) : null}
-
-        {addFoodMode === 'search' ? (
-          <>
-            <View className="flex-row gap-2">
-              <View className="flex-1">
-                <Input
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder="Search foods..."
-                  returnKeyType="search"
-                  onSubmitEditing={() => searchQuery.trim() && searchCatalog(searchQuery.trim())}
-                />
-              </View>
-              <Button
-                variant="outline"
-                size="icon"
-                onPress={() => searchQuery.trim() && searchCatalog(searchQuery.trim())}
-                disabled={isSearchingCatalog || !searchQuery.trim()}>
-                {isSearchingCatalog ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <Icon as={SearchIcon} size={18} className="text-foreground" />
-                )}
-              </Button>
-            </View>
-
-            {catalogResults.length > 0 ? (
-              <View className="overflow-hidden rounded-2xl border border-separator bg-card">
-                {catalogResults.slice(0, 8).map((food, index) => (
-                  <View key={food.id}>
-                    <ListRow
-                      title={food.name}
-                      subtitle={`${food.brand ? `${food.brand} · ` : ''}${food.servingLabel} · ${Math.round(food.calories)} kcal`}
-                      onPress={() => {
-                        applyFoodToQuickAdd(food);
-                        setAddFoodMode('manual');
-                      }}
-                    />
-                    {index < Math.min(catalogResults.length, 8) - 1 ? (
-                      <View className="ml-4 border-hairline border-separator" />
-                    ) : null}
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text className="text-[13px] text-muted-foreground">
-                Search by food name, brand, or barcode.
-              </Text>
-            )}
           </>
         ) : null}
 

@@ -641,10 +641,10 @@ export async function getDailyNutritionSummary(
 ): Promise<DailyNutritionSummary> {
   const [totalsRow] = await db
     .select({
-      calories: sql<number>`COALESCE(SUM(${foodLogs.calories}), 0)`,
-      proteinGrams: sql<number>`COALESCE(SUM(${foodLogs.proteinGrams}), 0)`,
-      carbsGrams: sql<number>`COALESCE(SUM(${foodLogs.carbsGrams}), 0)`,
-      fatGrams: sql<number>`COALESCE(SUM(${foodLogs.fatGrams}), 0)`,
+      calories: sql<number>`COALESCE(SUM(${foodLogs.calories} * ${foodLogs.quantity}), 0)`,
+      proteinGrams: sql<number>`COALESCE(SUM(${foodLogs.proteinGrams} * ${foodLogs.quantity}), 0)`,
+      carbsGrams: sql<number>`COALESCE(SUM(${foodLogs.carbsGrams} * ${foodLogs.quantity}), 0)`,
+      fatGrams: sql<number>`COALESCE(SUM(${foodLogs.fatGrams} * ${foodLogs.quantity}), 0)`,
     })
     .from(foodLogs)
     .where(and(eq(foodLogs.userId, userId), eq(foodLogs.logDate, logDate)));
@@ -727,10 +727,10 @@ export async function listNutritionTrends(userId: string, endLogDate: string, da
       fatGrams: 0,
     };
 
-    current.calories += entry.calories;
-    current.proteinGrams += entry.proteinGrams;
-    current.carbsGrams += entry.carbsGrams;
-    current.fatGrams += entry.fatGrams;
+    current.calories += entry.calories * entry.quantity;
+    current.proteinGrams += entry.proteinGrams * entry.quantity;
+    current.carbsGrams += entry.carbsGrams * entry.quantity;
+    current.fatGrams += entry.fatGrams * entry.quantity;
     bucket.set(entry.logDate, current);
   }
 

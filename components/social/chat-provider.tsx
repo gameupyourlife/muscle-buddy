@@ -17,7 +17,14 @@ import {
   UserXIcon,
 } from 'lucide-react-native';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Alert, Modal, ScrollView, View } from 'react-native';
+import {
+  Alert,
+  Keyboard,
+  Modal,
+  Platform,
+  ScrollView,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ChatContextValue = {
@@ -86,6 +93,7 @@ function ChatProvider({ children }: { children: ReactNode }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatSearch, setChatSearch] = useState('');
   const [chatDraft, setChatDraft] = useState('');
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const [isPlanningMeetup, setIsPlanningMeetup] = useState(false);
   const [meetupDay, setMeetupDay] = useState('tomorrow');
   const [meetupTime, setMeetupTime] = useState('19:00');
@@ -129,6 +137,22 @@ function ChatProvider({ children }: { children: ReactNode }) {
     void loadInitialData({ force: true, silent: true });
   }, [loadInitialData]);
 
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardInset(Math.max(0, event.endCoordinates.height - insets.bottom));
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardInset(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [insets.bottom]);
+
   const resetMeetupComposer = () => {
     setIsPlanningMeetup(false);
     setMeetupDay('tomorrow');
@@ -142,6 +166,7 @@ function ChatProvider({ children }: { children: ReactNode }) {
     setIsChatOpen(false);
     setChatSearch('');
     setChatDraft('');
+    setKeyboardInset(0);
     resetMeetupComposer();
     setActiveBuddyUserId(null);
   };
@@ -202,7 +227,10 @@ function ChatProvider({ children }: { children: ReactNode }) {
         <Modal visible={isChatOpen} animationType="slide" onRequestClose={closeChat}>
           <View
             className="flex-1 bg-background px-4"
-            style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }}>
+            style={{
+              paddingTop: insets.top + 16,
+              paddingBottom: insets.bottom + 24 + keyboardInset,
+            }}>
             {activeBuddy ? (
               <View className="flex-1 gap-4">
                 <View className="flex-row items-center gap-3">
@@ -236,7 +264,10 @@ function ChatProvider({ children }: { children: ReactNode }) {
                   </Button>
                 </View>
 
-                <Surface className="flex-1" padded={false}>
+                <Surface
+                  className="flex-1"
+                  padded={false}
+                  style={keyboardInset > 0 ? { maxHeight: '72%' } : undefined}>
                   <ScrollView
                     className="flex-1"
                     contentContainerStyle={{
